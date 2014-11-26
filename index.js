@@ -1,6 +1,7 @@
 var React = require('react');
 var osmAuth = require('osm-auth');
 var parser = require('./parser.js');
+var qs = require('querystring');
 var changeset = require('./changeset.js');
 
 window.React = React;
@@ -8,10 +9,12 @@ window.React = React;
 var auth = osmAuth({
   oauth_consumer_key: 'VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw',
   oauth_secret: 'ugrQJAmn1zgdn73rn9tKCRl6JQHaZkcen2z3JpAb',
-  auto: true
+  auto: false,
+  singlepage: true
 });
 
 var RADIUS = 0.004;
+
 
 var Editor = React.createClass({
     getInitialState() {
@@ -117,6 +120,13 @@ var Page = React.createClass({
   },
   componentDidMount() {
     this.locate();
+    console.log(location.search);
+    if (location.search) {
+      var oauth_token = qs.parse(location.search.replace('?', '')).oauth_token;
+      auth.bootstrapToken(oauth_token, () => {
+         location.href = location.href.replace(/\?.*$/, '');
+      });
+    }
   },
   authenticate(e) {
     if (e) e.preventDefault();
@@ -125,6 +135,7 @@ var Page = React.createClass({
     });
   },
   load() {
+    if (!this.state.location || !this.state.user) return;
     this.setState({ loading: true });
     var bbox = [
       this.state.location.coords.longitude - RADIUS,
@@ -159,7 +170,7 @@ var Page = React.createClass({
           <h1 className='center'>COFFEE DEX</h1>
           <div className='pad1 center'>How much does a cup of house coffee for here cost, everywhere?</div>
         </div>
-        {!this.state.user && <a href='#' className='fill-green center pad1 col12 icon user' onClick={this.authenticate}>AUTHENTICATE</a>}
+        {!this.state.user && <a href='#' className='fill-green dark center pad1 col12 icon user' onClick={this.authenticate}>AUTHENTICATE</a>}
         {!this.state.location && <a href='#' className='fill-blue center dark pad1 col12 icon compass' onClick={this.locate}>LOCATE</a>}
         {this.state.location && <div className='col12 center pad1 fill-grey code'>
           {this.state.location.coords.latitude.toFixed(3)},
