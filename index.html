@@ -3,10 +3,29 @@
   <head>
     <title>Coffeedex</title>
     <meta charset='utf-8' />
+    <script src="//cdn.ravenjs.com/1.1.15/jquery,native/raven.min.js"></script>
     <link href='https://122e4e-mapbox.global.ssl.fastly.net/base/latest/base.css' rel='stylesheet' />
   </head>
   <body>
     <div id='content'></div>
     <script src='bundle.js'></script>
+  <script type="text/javascript">
+      var _gauges = _gauges || [];
+      (function() {
+        var t   = document.createElement('script');
+        t.type  = 'text/javascript';
+        t.async = true;
+        t.id    = 'gauges-tracker';
+        t.setAttribute('data-site-id', '54765affeddd5b20be000270');
+        t.src = '//secure.gaug.es/track.js';
+        var s = document.getElementsByTagName('script')[0];
+        s.parentNode.insertBefore(t, s);
+      })();
+    </script>
+    <script>
+    Raven.config('https://64767213c79640d68b949475986415ce@app.getsentry.com/33852', {
+        whitelistUrls: ['macwright.org/coffeedex/']
+    }).install();
+    </script>
   </body>
 </html>
