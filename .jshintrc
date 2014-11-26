@@ -1,0 +1,14 @@
+{
+    "evil": true,
+    "smarttabs": true,
+    "strict": false,
+    "globalstrict": false,
+    "asi": false,
+    "esnext": true,
+    "globals": {
+        "window": true,
+        "require": true,
+        "module": true,
+        "document": true
+    }
+}

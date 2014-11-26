@@ -1,0 +1,42 @@
+{
+  "name": "coffeedex",
+  "version": "1.0.0",
+  "description": "coffee price index in openstreetmap",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "watchify index.js -o bundle.js & serve",
+    "build": "browserify index.js -d -p [minifyify --map bundle.map.json --output bundle.map.json] > bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:tmcw/coffeedex.git"
+  },
+  "browserify": {
+    "transform": [
+      "6to5-browserify"
+    ]
+  },
+  "keywords": [
+    "coffee",
+    "price",
+    "index",
+    "ui",
+    "client"
+  ],
+  "author": "Tom MacWright",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tmcw/coffeedex/issues"
+  },
+  "homepage": "https://github.com/tmcw/coffeedex",
+  "devDependencies": {
+    "6to5-browserify": "^1.3.0",
+    "browserify": "^6.3.3",
+    "minifyify": "^4.4.0",
+    "osm-auth": "^0.2.7",
+    "react": "^0.12.1",
+    "serve": "^1.4.0",
+    "watchify": "^2.1.1"
+  }
+}
