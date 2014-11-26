@@ -10,11 +10,11 @@ var auth = osmAuth({
   oauth_consumer_key: 'VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw',
   oauth_secret: 'ugrQJAmn1zgdn73rn9tKCRl6JQHaZkcen2z3JpAb',
   auto: false,
+  landing: 'index.html',
   singlepage: true
 });
 
 var RADIUS = 0.004;
-
 
 var Editor = React.createClass({
     getInitialState() {
@@ -120,10 +120,9 @@ var Page = React.createClass({
   },
   componentDidMount() {
     this.locate();
-    console.log(location.search);
-    if (location.search) {
+    if (location.search && !auth.authenticated()) {
       var oauth_token = qs.parse(location.search.replace('?', '')).oauth_token;
-      auth.bootstrapToken(oauth_token, () => {
+      auth.bootstrapToken(oauth_token, (err, res) => {
          location.href = location.href.replace(/\?.*$/, '');
       });
     }
