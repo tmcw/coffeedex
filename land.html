@@ -12,6 +12,6 @@
                 }, {});
             }
             var oauth_token = stringQs(window.location.href.split('?')[1]).oauth_token;
-            location.href = '/?oauth_token=' + oauth_token;
+            location.href = location.href.replace('land.html', '') + '?oauth_token=' + oauth_token;
   </script>
 </html>
