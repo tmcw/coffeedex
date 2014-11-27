@@ -5,12 +5,14 @@ var changeset = require('./lib/changeset.js');
 var Result = require('./components/result.jsx');
 var Editor = require('./components/editor.jsx');
 var queryOverpass = require('./lib/query_overpass.js');
+var haversine = require('haversine');
 var auth = require('./auth');
 
 var Router = require('react-router');
 var { Route, RouteHandler, DefaultRoute } = Router;
 
 var results = [];
+var location = { latitude: 0, longitude: 0 };
 
 window.React = React;
 
@@ -54,6 +56,7 @@ var Page = React.createClass({
   locate(e) {
     if (e) e.preventDefault();
     navigator.geolocation.getCurrentPosition(res => {
+      location = res.coords;
       this.setState({ location: res }, this.load);
     });
   },
@@ -93,11 +96,11 @@ var Page = React.createClass({
 });
 
 var List = React.createClass({
-  render() {
-    return (<div>
-      {results.map(res => <Result key={res.id} res={res} />)}
-    </div>);
-  }
+  render: () => (<div>
+    {results
+        .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
+        .map(res => <Result key={res.id} res={res} />)}
+  </div>)
 });
 
 var routes = (
@@ -107,7 +110,7 @@ var routes = (
   </Route>
 );
 
-Router.run(routes, function (Handler) {
+Router.run(routes, Handler => {
   React.render(<Handler/>, document.body);
 });
 /* jshint ignore:end */

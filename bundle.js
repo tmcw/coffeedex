@@ -133,6 +133,7 @@ var changeset = require("./lib/changeset.js");
 var Result = require("./components/result.jsx");
 var Editor = require("./components/editor.jsx");
 var queryOverpass = require("./lib/query_overpass.js");
+var haversine = require("haversine");
 var auth = require("./auth");
 
 var Router = require("react-router");
@@ -142,6 +143,7 @@ var DefaultRoute = Router.DefaultRoute;
 
 
 var results = [];
+var location = { latitude: 0, longitude: 0 };
 
 window.React = React;
 
@@ -189,6 +191,7 @@ var Page = React.createClass({
     var _this3 = this;
     if (e) e.preventDefault();
     navigator.geolocation.getCurrentPosition(function (res) {
+      location = res.coords;
       _this3.setState({ location: res }, _this3.load);
     });
   },
@@ -232,7 +235,9 @@ var Page = React.createClass({
 var List = React.createClass({
   displayName: "List",
   render: function () {
-    return (React.createElement("div", null, results.map(function (res) {
+    return (React.createElement("div", null, results.sort(function (a, b) {
+      return haversine(location, a.location) - haversine(location, b.location);
+    }).map(function (res) {
       return React.createElement(Result, {
         key: res.id,
         res: res
@@ -257,7 +262,7 @@ Router.run(routes, function (Handler) {
 });
 /* jshint ignore:end */
 
-},{"./auth":"/Users/tmcw/src/coffeedex/auth.js","./components/editor.jsx":"/Users/tmcw/src/coffeedex/components/editor.jsx","./components/result.jsx":"/Users/tmcw/src/coffeedex/components/result.jsx","./lib/changeset.js":"/Users/tmcw/src/coffeedex/lib/changeset.js","./lib/parser.js":"/Users/tmcw/src/coffeedex/lib/parser.js","./lib/query_overpass.js":"/Users/tmcw/src/coffeedex/lib/query_overpass.js","querystring":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/querystring-es3/index.js","react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js","react-router":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/index.js"}],"/Users/tmcw/src/coffeedex/lib/changeset.js":[function(require,module,exports){
+},{"./auth":"/Users/tmcw/src/coffeedex/auth.js","./components/editor.jsx":"/Users/tmcw/src/coffeedex/components/editor.jsx","./components/result.jsx":"/Users/tmcw/src/coffeedex/components/result.jsx","./lib/changeset.js":"/Users/tmcw/src/coffeedex/lib/changeset.js","./lib/parser.js":"/Users/tmcw/src/coffeedex/lib/parser.js","./lib/query_overpass.js":"/Users/tmcw/src/coffeedex/lib/query_overpass.js","haversine":"/Users/tmcw/src/coffeedex/node_modules/haversine/haversine.js","querystring":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/querystring-es3/index.js","react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js","react-router":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/index.js"}],"/Users/tmcw/src/coffeedex/lib/changeset.js":[function(require,module,exports){
 "use strict";
 
 var serializer = new XMLSerializer();
@@ -292,31 +297,43 @@ module.exports.change = change;
 },{}],"/Users/tmcw/src/coffeedex/lib/parser.js":[function(require,module,exports){
 "use strict";
 
-function parser(xml, kv) {
-  var nodes = xml.getElementsByTagName("node"), results = [];
-  for (var i = 0; i < nodes.length; i++) {
-    var tags = nodes[i].getElementsByTagName("tag"), obj = {};
-    for (var j = 0; j < tags.length; j++) {
-      var v = tags[j].getAttribute("v"), k = tags[j].getAttribute("k");
-      obj[k] = v;
-      if (k === kv.k && v === kv.v) {
-        results.push({
-          xml: nodes[i],
-          tags: obj,
-          id: nodes[i].getAttribute("id")
-        });
+// Given an XML DOM in OSM format and an object of the form
+//
+//     { k: key, v: value }
+//
+// Find all nodes with that key combination and return them
+// in the form
+//
+//     { xml: Node, tags: {}, id: 'osm-id' }
+//
+var a = function (nl) {
+  return Array.prototype.slice.call(nl);
+};
+var attr = function (n, k) {
+  return n.getAttribute(k);
+};
+module.exports = function (xml, kv) {
+  return a(xml.getElementsByTagName("node")).map(function (node) {
+    return a(node.getElementsByTagName("tag")).reduce(function (memo, tag) {
+      memo.tags[attr(tag, "k")] = attr(tag, "v");
+      return memo;
+    }, {
+      xml: node, tags: {}, id: attr(node, "id"),
+      location: {
+        latitude: parseFloat(attr(node, "lat")),
+        longitude: parseFloat(attr(node, "lon"))
       }
-    }
-  }
-  return results;
-}
-
-module.exports = parser;
+    });
+  }).filter(function (node) {
+    return node.tags[kv.k] === kv.v;
+  });
+};
 
 },{}],"/Users/tmcw/src/coffeedex/lib/query_overpass.js":[function(require,module,exports){
 "use strict";
 
 var xhr = require("xhr");
+
 var RADIUS = 0.01;
 var ENDPOINT = "http://overpass-api.de/api/interpreter";
 
@@ -1897,7 +1914,47 @@ var objectKeys = Object.keys || function (obj) {
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/querystring-es3/decode.js","./encode":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/querystring-es3/encode.js"}],"/Users/tmcw/src/coffeedex/node_modules/osm-auth/index.js":[function(require,module,exports){
+},{"./decode":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/querystring-es3/decode.js","./encode":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/querystring-es3/encode.js"}],"/Users/tmcw/src/coffeedex/node_modules/haversine/haversine.js":[function(require,module,exports){
+// haversine
+// By Nick Justice (niix)
+// https://github.com/niix/haversine
+
+var haversine = (function() {
+
+  // convert to radians
+  var toRad = function(num) {
+    return num * Math.PI / 180
+  }
+
+  return function haversine(start, end, options) {
+    var km    = 6371
+    var mile  = 3960
+    options   = options || {}
+
+    var R = options.unit === 'mile' ?
+      mile :
+      km
+
+    var dLat = toRad(end.latitude - start.latitude)
+    var dLon = toRad(end.longitude - start.longitude)
+    var lat1 = toRad(start.latitude)
+    var lat2 = toRad(end.latitude)
+
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2)
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+
+    if (options.threshold) {
+      return options.threshold > (R * c)
+    } else {
+      return R * c
+    }
+  }
+
+})()
+
+module.exports = haversine
+},{}],"/Users/tmcw/src/coffeedex/node_modules/osm-auth/index.js":[function(require,module,exports){
 'use strict';
 
 var ohauth = require('ohauth'),
