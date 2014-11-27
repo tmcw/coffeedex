@@ -58,3 +58,5 @@ var Editor = React.createClass({
       /* jshint ignore:end */
     }
 });
+
+module.exports = Editor;

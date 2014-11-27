@@ -1,4 +1,6 @@
 var React = require('react');
+var Router = require('react-router');
+var { Link } = Router;
 
 var Result = React.createClass({
   getInitialState() {
@@ -13,7 +15,8 @@ var Result = React.createClass({
     /* jshint ignore:start */
     return <div className='pad0 col12 clearfix'>
       <div className='margin3 col6 truncate pad0y'>
-        <div className='big'>
+        <Link to='editor' params={{ osmId: this.props.res.id }}
+            className='big'>
           {this.props.res.tags['cost:coffee'] ?
             (<div className='price text-right pad1x'>
                 ${this.props.res.tags['cost:coffee']}
@@ -22,7 +25,7 @@ var Result = React.createClass({
                 <span className='icon pencil'></span>
             </div>}
           {this.props.res.tags.name}
-        </div>
+        </Link>
       </div>
     </div>;
     /* jshint ignore:end */
