@@ -1,0 +1,10 @@
+.big {
+  font-size:25px;
+  line-height:25px;
+}
+
+.price {
+  display:inline-block;
+  width:50px;
+  vertical-align:middle;
+}

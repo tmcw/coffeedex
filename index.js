@@ -1,113 +1,14 @@
 var React = require('react');
-var osmAuth = require('osm-auth');
-var parser = require('./parser.js');
 var qs = require('querystring');
-var changeset = require('./changeset.js');
+var parser = require('./lib/parser.js');
+var changeset = require('./lib/changeset.js');
+var Result = require('./components/result.jsx');
+var queryOverpass = require('./lib/query_overpass.js');
+var auth = require('./auth');
 
 window.React = React;
 
-var auth = osmAuth({
-  oauth_consumer_key: 'VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw',
-  oauth_secret: 'ugrQJAmn1zgdn73rn9tKCRl6JQHaZkcen2z3JpAb',
-  auto: false,
-  landing: 'index.html',
-  singlepage: true
-});
-
 var RADIUS = 0.004;
-
-var Editor = React.createClass({
-    getInitialState() {
-      return {
-        price: this.props.res.tags['cost:coffee'] || 2
-      };
-    },
-    setPrice(e) {
-      this.setState({ price: e.target.value });
-    },
-    save(e) {
-      e.preventDefault();
-      var comment = prompt('Write a changeset message for OpenStreetMap');
-      if (!comment) return;
-      auth.xhr({
-        method: 'PUT',
-        options: { header: { 'Content-Type': 'text/xml' } },
-        content: changeset.create(comment),
-        prefix: false,
-        path: 'http://api.openstreetmap.org/api/0.6/changeset/create'
-      }, (err, id) => {
-        if (err) return console.error(err);
-        auth.xhr({
-            method: 'POST',
-            options: { header: { 'Content-Type': 'text/xml' } },
-            content: changeset.change(this.props.res.xml, {
-                k: 'cost:coffee',
-                v: this.state.price
-            }, id),
-            prefix: false,
-            path: `http://api.openstreetmap.org/api/0.6/changeset/${id}/upload`,
-          }, (err, res) => {
-            auth.xhr({
-                method: 'PUT',
-                prefix: false,
-                path: `http://api.openstreetmap.org/api/0.6/changeset/${id}/close`
-              }, (err, id) => {
-                  if (err) console.error(err);
-                  alert('Success!');
-              });
-          });
-      });
-    },
-    render() {
-      /* jshint ignore:start */
-      return <div className='pad0y'>
-        $<input
-          onChange={this.setPrice}
-          value={this.state.price}
-          className='short'
-          type='number' />
-        <a href='#'
-            onClick={this.save}
-            className='button short unround icon plus'>Save</a>
-      </div>;
-      /* jshint ignore:end */
-    }
-});
-
-var Result = React.createClass({
-  getInitialState() {
-    return { update: false };
-  },
-  setUpdate(e) {
-    e.preventDefault();
-    this.setState({ update: true });
-  },
-  render() {
-    var osmURL = `http://openstreetmap.org/node/${this.props.res.id}`;
-    /* jshint ignore:start */
-    return <div className='keyline-bottom pad0 col12 clearfix'>
-      <div className='col6'>
-        <h3>
-          <a href={osmURL}>
-            {this.props.res.tags.name}
-          </a>
-        </h3>
-      </div>
-      <div className='col6'>
-        {(!this.state.update && this.props.res.tags['cost:coffee']) ?
-          (<div className='pad0y'>
-             <strong>${this.props.res.tags['cost:coffee']}</strong>
-             <a
-              onClick={this.setUpdate}
-              href='#'
-              className='quiet icon pencil'></a>
-          </div>) :
-          <Editor res={this.props.res} />}
-      </div>
-    </div>;
-    /* jshint ignore:end */
-  }
-});
 
 var Page = React.createClass({
   getInitialState() {
@@ -136,18 +37,10 @@ var Page = React.createClass({
   load() {
     if (!this.state.location || !this.state.user) return;
     this.setState({ loading: true });
-    var bbox = [
-      this.state.location.coords.longitude - RADIUS,
-      this.state.location.coords.latitude - RADIUS,
-      this.state.location.coords.longitude + RADIUS,
-      this.state.location.coords.latitude + RADIUS].join(',');
-    auth.xhr({
-      method: 'GET',
-      path: `/api/0.6/map/?bbox=${bbox}`
-    }, (err, map) => {
+    queryOverpass(this.state.location.coords, (err, resp, map) => {
       if (err) return console.error(err);
       this.setState({
-        results: parser(map, { k: 'amenity', v: 'cafe' }),
+        results: parser(resp.responseXML, { k: 'amenity', v: 'cafe' }),
         loading: false
       });
     });
@@ -164,25 +57,31 @@ var Page = React.createClass({
   render() {
     /* jshint ignore:start */
     return (
-      <div className='col6 margin3'>
-        <div className='pad1'>
-          <h1 className='center'>COFFEE DEX</h1>
-          <div className='pad1 center'>
-             <p>How much does a cup of house coffee for here cost, everywhere?</p>
-              <p>load coffee shops within 0.004 degrees of you, and when you edit and save a price, it's added to openstreetmap.</p>
-              <p>prices should be for the cheapest for-here coffee on the menu.</p>
-              </div>
+      <div className='col12 pad2y'>
+        <div className='col12 clearfix pad1y  space-bottom1'>
+          <div className='margin3 col6'>
+            <div className='col3 center'>
+              <img height='92' width='120' src='./assets/logo.png' />
+            </div>
+            <div className='col9 pad2y'>
+                <a href='#'
+                  className='fill-green button col6 unround icon user'
+                  onClick={this.authenticate}>{this.state.user ? 'log out' : 'log in'}</a>
+                {this.state.location ? (
+                  <div className='col6 center pad1 fill-grey code'>
+                    {this.state.location.coords.latitude.toFixed(3)}, {this.state.location.coords.longitude.toFixed(3)}
+                  </div>
+                ) : (<a href='#'
+                  className='fill-blue button col6 unround icon compass'
+                  onClick={this.locate}>find me</a>
+                )}
+            </div>
+          </div>
         </div>
-        {!this.state.user && <a href='#' className='fill-green dark center pad1 col12 icon user' onClick={this.authenticate}>AUTHENTICATE</a>}
-        {!this.state.location && <a href='#' className='fill-blue center dark pad1 col12 icon compass' onClick={this.locate}>LOCATE</a>}
-        {this.state.location && <div className='col12 center pad1 fill-grey code'>
-          {this.state.location.coords.latitude.toFixed(3)}, {this.state.location.coords.longitude.toFixed(3)}
-          </div>}
-        {this.state.loading && <h1 className='pad1 center'>LOADING</h1>}
-        {this.state.results.map(res => <Result key={res.id} res={res} />)}
-        <div className='pad1 keyline-top center'>
-            <a href='https://github.com/tmcw/coffeedex'>github.com/tmcw/coffeedex</a>
+        <div className='col12'>
+          {this.state.results.map(res => <Result key={res.id} res={res} />)}
         </div>
+        <a className='col12 center pad1 quiet' href='https://github.com/tmcw/coffeedex'>?</a>
       </div>
     );
     /* jshint ignore:end */
