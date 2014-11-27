@@ -1,8 +1,8 @@
-[src/**.js]
+[**.js]
 indent_style = space
 indent_size = 2
 trim_trailing_whitespace = true
-[src/**.jsx]
+[**.jsx]
 indent_style = space
 indent_size = 2
 trim_trailing_whitespace = true

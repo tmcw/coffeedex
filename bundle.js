@@ -1,7 +1,129 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/Users/tmcw/src/coffeedex/auth.js":[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/Users/tmcw/src/coffeedex/index.js":[function(require,module,exports){
 "use strict";
 
+var _this = this;
+var React = require("react");
+
+var Router = require("react-router");
+
+var Link = Router.Link;
+var Route = Router.Route;
+var RouteHandler = Router.RouteHandler;
+var DefaultRoute = Router.DefaultRoute;
 var osmAuth = require("osm-auth");
+
+var haversine = require("haversine");
+
+var xhr = require("xhr");
+
+var qs = require("querystring");
+
+window.React = React;
+
+var KEYPAIR = { k: "amenity", v: "cafe" };
+var VERSION = "COFFEE DEX 2001";
+var API06 = "http://api.openstreetmap.org/api/0.6/";
+var OVERPASS = "http://overpass-api.de/api/interpreter";
+
+// # Parsing & Producing XML
+var a = function (nl) {
+  return Array.prototype.slice.call(nl);
+}, attr = function (n, k) {
+  return n.getAttribute(k);
+}, serializer = new XMLSerializer();
+// Given an XML DOM in OSM format and an object of the form { k, v }
+// Find all nodes with that key combination and return them
+// in the form { xml: Node, tags: {}, id: 'osm-id' }
+var parser = function (xml, kv) {
+  return a(xml.getElementsByTagName("node")).map(function (node) {
+    return a(node.getElementsByTagName("tag")).reduce(function (memo, tag) {
+      memo.tags[attr(tag, "k")] = attr(tag, "v");return memo;
+    }, {
+      xml: node, tags: {}, id: attr(node, "id"),
+      location: {
+        latitude: parseFloat(attr(node, "lat")),
+        longitude: parseFloat(attr(node, "lon"))
+      }
+    });
+  }).filter(function (node) {
+    return node.tags[kv.k] === kv.v;
+  });
+};
+var serialize = function (xml) {
+  return serializer.serializeToString(xml).replace("xmlns=\"http://www.w3.org/1999/xhtml\"", "");
+};
+var changesetChange = function (comment) {
+  return "<osm><changeset>\n    <tag k='created_by' v='" + VERSION + "' />\n    <tag k='comment' v='" + comment + "' />\n  </changeset></osm>";
+};
+var changesetChange = function (node, tag, id) {
+  a(node.getElementsByTagName("tag")).filter(function (tag) {
+    return tags.getAttribute("k") === tag.k;
+  }).forEach(function (tag) {
+    return node.removeChild(tag);
+  });
+  var newTag = node.appendChild(document.createElement("tag"));
+  newTag.setAttribute("k", tag.k);newTag.setAttribute("v", tag.v);
+  return ("<osmChange version=\"0.3\" generator=\"" + VERSION + "\">\n  <modify>" + serialize(node) + "</modify>\n  </osmChange>").replace(/changeset=\"\d+\"/, "changeset=\"" + id + "\"");
+};
+var queryOverpass = function (center, kv, callback) {
+  var RADIUS = 0.01;
+  var bbox = [center.latitude - RADIUS, center.longitude - RADIUS, center.latitude + RADIUS, center.longitude + RADIUS].join(",");
+  var query = "[out:xml][timeout:25];\n  (node[\"" + kv.k + "\"=\"" + kv.v + "\"](" + bbox + ");); out body; >; out skel qt;";
+  xhr({ uri: OVERPASS, method: "POST", body: query }, callback);
+};
+
+// # Stores
+var locationStartTracking = Reflux.createAction();
+var locationStore = Reflux.createStore({
+  location: null,
+  init: function () {
+    this.listenTo(startTracking, this.startTracking);
+  },
+  startTracking: function () {
+    var _this2 = this;
+    navigator.geolocation.getCurrentPosition(function (res) {
+      _this2.location = res.coords;
+      _this2.trigger();
+    });
+  }
+});
+
+var nodeLoad = Reflux.createAction();
+var nodeSave = Reflux.createAction();
+var nodeStore = Reflux.createStore({
+  nodes: [],
+  init: function () {
+    this.listenTo(nodeLoad, this.load);
+    this.listenTo(nodeSave, this.save);
+  },
+  load: function (centerpoint) {
+    var _this3 = this;
+    queryOverpass(center, KEYPAIR, function (err, resp, map) {
+      if (err) return console.error(err);
+      _this3.nodes = _this3.nodes.concat(parser(resp.responseXML, KEYPAIR));
+      _this3.trigger();
+    });
+  },
+  save: function (comment, xml, tag) {
+    var XMLHEADER = { header: { "Content-Type": "text/xml" } };
+    auth.xhr({ method: "PUT", prefix: false, options: XMLHEADER,
+      content: changesetCreate(comment),
+      path: "" + API06 + "changeset/create"
+    }, function (err, id) {
+      if (err) return console.error(err);
+      auth.xhr({ method: "POST", prefix: false, options: XMLHEADER,
+        content: changesetChange(xml, tag, id),
+        path: "" + API06 + "changeset/" + id + "/upload" }, function (err, res) {
+        auth.xhr({ method: "PUT", prefix: false,
+          path: "" + API06 + "changeset/" + id + "/close"
+        }, function (err, id) {
+          if (err) console.error(err);
+          alert("Success!");
+        });
+      });
+    });
+  }
+});
 
 var auth = osmAuth({
   oauth_consumer_key: "VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw",
@@ -11,96 +133,93 @@ var auth = osmAuth({
   singlepage: true
 });
 
-module.exports = auth;
-
-},{"osm-auth":"/Users/tmcw/src/coffeedex/node_modules/osm-auth/index.js"}],"/Users/tmcw/src/coffeedex/components/editor.jsx":[function(require,module,exports){
-"use strict";
-
-var React = require("react");
-var auth = require("../auth");
-
-var Editor = React.createClass({
-  displayName: "Editor",
-  getInitialState: function () {
-    return {
-      price: this.props.res.tags["cost:coffee"] || 2
-    };
+var userLogin = Reflux.createAction();
+var userStore = Reflux.createStore({
+  user: null,
+  init: function () {
+    this.listenTo(userLogin, this.login);
   },
-  setPrice: function (e) {
-    this.setState({ price: e.target.value });
-  },
-  save: function (e) {
-    var _this = this;
-    e.preventDefault();
-    var comment = prompt("Write a changeset message for OpenStreetMap");
-    if (!comment) return;
-    auth.xhr({
-      method: "PUT",
-      options: { header: { "Content-Type": "text/xml" } },
-      content: changeset.create(comment),
-      prefix: false,
-      path: "http://api.openstreetmap.org/api/0.6/changeset/create"
-    }, function (err, id) {
-      if (err) return console.error(err);
-      auth.xhr({
-        method: "POST",
-        options: { header: { "Content-Type": "text/xml" } },
-        content: changeset.change(_this.props.res.xml, {
-          k: "cost:coffee",
-          v: _this.state.price
-        }, id),
-        prefix: false,
-        path: "http://api.openstreetmap.org/api/0.6/changeset/" + id + "/upload" }, function (err, res) {
-        auth.xhr({
-          method: "PUT",
-          prefix: false,
-          path: "http://api.openstreetmap.org/api/0.6/changeset/" + id + "/close"
-        }, function (err, id) {
-          if (err) console.error(err);
-          alert("Success!");
-        });
-      });
+  login: function () {
+    var _this4 = this;
+    auth.authenticate(function (err, details) {
+      _this4.user = auth.authenticated();
+      _this4.trigger();
     });
-  },
-  render: function () {
-    /* jshint ignore:start */
-    return React.createElement("div", {
-      className: "pad0y"
-    }, "$", React.createElement("input", {
-      onChange: this.setPrice,
-      value: this.state.price,
-      className: "short",
-      type: "number"
-    }), React.createElement("a", {
-      href: "#",
-      onClick: this.save,
-      className: "button short unround icon plus"
-    }, "Save"));
-    /* jshint ignore:end */
   }
 });
 
-module.exports = Editor;
+// Utilities for views
+var kill = function (fn) {
+  return function (e) {
+    e.preventDefault();fn();
+  };
+};
 
-},{"../auth":"/Users/tmcw/src/coffeedex/auth.js","react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js"}],"/Users/tmcw/src/coffeedex/components/result.jsx":[function(require,module,exports){
-"use strict";
+var Page = React.createClass({
+  displayName: "Page",
+  componentDidMount: function () {
+    if (location.search && !auth.authenticated()) {
+      var oauth_token = qs.parse(location.search.replace("?", "")).oauth_token;
+      auth.bootstrapToken(oauth_token, function (err, res) {
+        location.href = location.href.replace(/\?.*$/, "");
+      });
+    }
+  },
+  render: function () {
+    return (
+    /* jshint ignore:start */
+    React.createElement("div", {
+      className: "col12 pad2y"
+    }, React.createElement("div", {
+      className: "col12 clearfix pad1y  space-bottom1"
+    }, React.createElement("div", {
+      className: "margin3 col6"
+    }, React.createElement("div", {
+      className: "col3 center"
+    }, React.createElement("img", {
+      height: "92",
+      width: "120",
+      src: "./assets/logo.png"
+    })), React.createElement("div", {
+      className: "col9 pad2y"
+    }, React.createElement("a", {
+      href: "#",
+      className: "fill-green button col6 unround icon user",
+      onClick: kill(userLogin)
+    }, this.state.user ? "log out" : "log in"), this.state.location ? (React.createElement("div", {
+      className: "col6 center pad1 fill-grey code"
+    }, this.state.location.coords.latitude.toFixed(3), ", ", this.state.location.coords.longitude.toFixed(3))) : (React.createElement("a", {
+      href: "#",
+      className: "fill-blue button col6 unround icon compass",
+      onClick: kill(locationStartTracking)
+    }, "find me"))))), React.createElement("div", {
+      className: "col12"
+    }, React.createElement(RouteHandler, null)), React.createElement("a", {
+      className: "col12 center pad1 quiet",
+      href: "https://github.com/tmcw/coffeedex"
+    }, "?")));
+  }
+});
 
-var React = require("react");
-var Router = require("react-router");
-var Link = Router.Link;
-
+var List = React.createClass({
+  displayName: "List",
+  mixins: [Reflux.connect(nodeStore, "nodes")],
+  /* jshint ignore:start */
+  render: function () {
+    return React.createElement("div", null, _this.state.nodes.sort(function (a, b) {
+      return haversine(location, a.location) - haversine(location, b.location);
+    }).map(function (res) {
+      return React.createElement(Result, {
+        key: res.id,
+        res: res
+      });
+    }));
+  }
+});
 
 var Result = React.createClass({
   displayName: "Result",
-  getInitialState: function () {
-    return { update: false };
-  },
-  setUpdate: function (e) {
-    e.preventDefault();
-    this.setState({ update: true });
-  },
   render: function () {
-    var osmURL = "http://openstreetmap.org/node/" + this.props.res.id;
     /* jshint ignore:start */
     return React.createElement("div", {
       className: "pad0 col12 clearfix"
@@ -121,135 +240,43 @@ var Result = React.createClass({
   }
 });
 
-module.exports = Result;
-
-},{"react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js","react-router":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/index.js"}],"/Users/tmcw/src/coffeedex/index.js":[function(require,module,exports){
-"use strict";
-
-var React = require("react");
-var qs = require("querystring");
-var parser = require("./lib/parser.js");
-var changeset = require("./lib/changeset.js");
-var Result = require("./components/result.jsx");
-var Editor = require("./components/editor.jsx");
-var queryOverpass = require("./lib/query_overpass.js");
-var haversine = require("haversine");
-var auth = require("./auth");
-
-var Router = require("react-router");
-var Route = Router.Route;
-var RouteHandler = Router.RouteHandler;
-var DefaultRoute = Router.DefaultRoute;
-
-
-var results = [];
-var location = { latitude: 0, longitude: 0 };
-
-window.React = React;
-
-/* jshint ignore:start */
-var Page = React.createClass({
-  displayName: "Page",
+var Editor = React.createClass({
+  displayName: "Editor",
   getInitialState: function () {
-    return {
-      user: auth.authenticated(),
-      location: null,
-      results: [],
-      loading: false
-    };
+    return { price: this.props.res.tags["cost:coffee"] || 2 };
   },
-  componentDidMount: function () {
-    this.locate();
-    if (location.search && !auth.authenticated()) {
-      var oauth_token = qs.parse(location.search.replace("?", "")).oauth_token;
-      auth.bootstrapToken(oauth_token, function (err, res) {
-        location.href = location.href.replace(/\?.*$/, "");
-      });
-    }
+  setPrice: function (e) {
+    return _this.setState({ price: e.target.value });
   },
-  authenticate: function (e) {
-    var _this = this;
-    if (e) e.preventDefault();
-    auth.authenticate(function (err, details) {
-      _this.setState({ user: auth.authenticated() });
-    });
-  },
-  load: function () {
-    var _this2 = this;
-    if (!this.state.location || !this.state.user) return;
-    this.setState({ loading: true });
-    queryOverpass(this.state.location.coords, function (err, resp, map) {
-      if (err) return console.error(err);
-      results = parser(resp.responseXML, { k: "amenity", v: "cafe" });
-      _this2.setState({
-        results: results,
-        loading: false
-      });
-    });
-  },
-  locate: function (e) {
-    var _this3 = this;
-    if (e) e.preventDefault();
-    navigator.geolocation.getCurrentPosition(function (res) {
-      location = res.coords;
-      _this3.setState({ location: res }, _this3.load);
-    });
-  },
-  addPrice: function (res, e) {
+  save: function (e) {
     e.preventDefault();
+    nodeSave(this.state.comment, { k: KEYPAIR.k, v: this.state.price }, this.props.res.xml);
   },
   render: function () {
-    return (React.createElement("div", {
-      className: "col12 pad2y"
-    }, React.createElement("div", {
-      className: "col12 clearfix pad1y  space-bottom1"
-    }, React.createElement("div", {
-      className: "margin3 col6"
-    }, React.createElement("div", {
-      className: "col3 center"
-    }, React.createElement("img", {
-      height: "92",
-      width: "120",
-      src: "./assets/logo.png"
-    })), React.createElement("div", {
-      className: "col9 pad2y"
-    }, React.createElement("a", {
+    /* jshint ignore:start */
+    return React.createElement("div", {
+      className: "pad0y"
+    }, "$", React.createElement("input", {
+      onChange: this.setPrice,
+      value: this.state.price,
+      className: "short",
+      type: "number"
+    }), React.createElement("a", {
       href: "#",
-      className: "fill-green button col6 unround icon user",
-      onClick: this.authenticate
-    }, this.state.user ? "log out" : "log in"), this.state.location ? (React.createElement("div", {
-      className: "col6 center pad1 fill-grey code"
-    }, this.state.location.coords.latitude.toFixed(3), ", ", this.state.location.coords.longitude.toFixed(3))) : (React.createElement("a", {
-      href: "#",
-      className: "fill-blue button col6 unround icon compass",
-      onClick: this.locate
-    }, "find me"))))), React.createElement("div", {
-      className: "col12"
-    }, React.createElement(RouteHandler, null)), React.createElement("a", {
-      className: "col12 center pad1 quiet",
-      href: "https://github.com/tmcw/coffeedex"
-    }, "?")));
+      onClick: this.save,
+      className: "button short unround icon plus"
+    }, "Save"));
+    /* jshint ignore:end */
   }
 });
 
-var List = React.createClass({
-  displayName: "List",
-  render: function () {
-    return (React.createElement("div", null, results.sort(function (a, b) {
-      return haversine(location, a.location) - haversine(location, b.location);
-    }).map(function (res) {
-      return React.createElement(Result, {
-        key: res.id,
-        res: res
-      });
-    })));
-  }
-});
-
-var routes = (React.createElement(Route, {
+var routes = (
+/* jshint ignore:start */
+React.createElement(Route, {
   handler: Page,
   path: "/"
 }, React.createElement(DefaultRoute, {
+  name: "list",
   handler: List
 }), React.createElement(Route, {
   name: "editor",
@@ -258,100 +285,12 @@ var routes = (React.createElement(Route, {
 })));
 
 Router.run(routes, function (Handler) {
+  /* jshint ignore:start */
   React.render(React.createElement(Handler, null), document.body);
+  /* jshint ignore:end */
 });
-/* jshint ignore:end */
 
-},{"./auth":"/Users/tmcw/src/coffeedex/auth.js","./components/editor.jsx":"/Users/tmcw/src/coffeedex/components/editor.jsx","./components/result.jsx":"/Users/tmcw/src/coffeedex/components/result.jsx","./lib/changeset.js":"/Users/tmcw/src/coffeedex/lib/changeset.js","./lib/parser.js":"/Users/tmcw/src/coffeedex/lib/parser.js","./lib/query_overpass.js":"/Users/tmcw/src/coffeedex/lib/query_overpass.js","haversine":"/Users/tmcw/src/coffeedex/node_modules/haversine/haversine.js","querystring":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/querystring-es3/index.js","react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js","react-router":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/index.js"}],"/Users/tmcw/src/coffeedex/lib/changeset.js":[function(require,module,exports){
-"use strict";
-
-var serializer = new XMLSerializer();
-
-function create(comment) {
-  return "\n      <osm>\n        <changeset>\n          <tag k='created_by' v='COFFEE DEX 2000' />\n          <tag k='comment' v='" + comment + "' />\n         </changeset>\n      </osm>";
-}
-
-module.exports.create = create;
-
-function serialize(xml) {
-  return serializer.serializeToString(xml).replace("xmlns=\"http://www.w3.org/1999/xhtml\"", "");
-}
-
-function change(node, tag, id) {
-  // remove old tag if it exists.
-  var tags = node.getElementsByTagName("tag");
-  for (var i = 0; i < tags.length; i++) {
-    if (tags[i].getAttribute("k") === tag.k) {
-      node.removeChild(tags[i]);
-    }
-  }
-
-  var newTag = node.appendChild(document.createElement("tag"));
-  newTag.setAttribute("k", tag.k);
-  newTag.setAttribute("v", tag.v);
-  return ("<osmChange version=\"0.3\" generator=\"Osmosis\">\n        <modify>\n            " + serialize(node) + "\n        </modify>\n    </osmChange>").replace(/changeset=\"\d+\"/, "changeset=\"" + id + "\"");
-}
-
-module.exports.change = change;
-
-},{}],"/Users/tmcw/src/coffeedex/lib/parser.js":[function(require,module,exports){
-"use strict";
-
-// Given an XML DOM in OSM format and an object of the form
-//
-//     { k: key, v: value }
-//
-// Find all nodes with that key combination and return them
-// in the form
-//
-//     { xml: Node, tags: {}, id: 'osm-id' }
-//
-var a = function (nl) {
-  return Array.prototype.slice.call(nl);
-};
-var attr = function (n, k) {
-  return n.getAttribute(k);
-};
-module.exports = function (xml, kv) {
-  return a(xml.getElementsByTagName("node")).map(function (node) {
-    return a(node.getElementsByTagName("tag")).reduce(function (memo, tag) {
-      memo.tags[attr(tag, "k")] = attr(tag, "v");
-      return memo;
-    }, {
-      xml: node, tags: {}, id: attr(node, "id"),
-      location: {
-        latitude: parseFloat(attr(node, "lat")),
-        longitude: parseFloat(attr(node, "lon"))
-      }
-    });
-  }).filter(function (node) {
-    return node.tags[kv.k] === kv.v;
-  });
-};
-
-},{}],"/Users/tmcw/src/coffeedex/lib/query_overpass.js":[function(require,module,exports){
-"use strict";
-
-var xhr = require("xhr");
-
-var RADIUS = 0.01;
-var ENDPOINT = "http://overpass-api.de/api/interpreter";
-
-function queryOverpass(centerpoint, callback) {
-  var bbox = [centerpoint.latitude - RADIUS, centerpoint.longitude - RADIUS, centerpoint.latitude + RADIUS, centerpoint.longitude + RADIUS].join(",");
-
-  var query = "[out:xml][timeout:25];\n  (\n    node[\"amenity\"=\"cafe\"](" + bbox + ");\n  );\n  out body;\n  >;\n  out skel qt;";
-
-  xhr({
-    uri: ENDPOINT,
-    method: "POST",
-    body: query
-  }, callback);
-}
-
-module.exports = queryOverpass;
-
-},{"xhr":"/Users/tmcw/src/coffeedex/node_modules/xhr/index.js"}],"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/buffer/index.js":[function(require,module,exports){
+},{"haversine":"/Users/tmcw/src/coffeedex/node_modules/haversine/haversine.js","osm-auth":"/Users/tmcw/src/coffeedex/node_modules/osm-auth/index.js","querystring":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/querystring-es3/index.js","react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js","react-router":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/index.js","xhr":"/Users/tmcw/src/coffeedex/node_modules/xhr/index.js"}],"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/buffer/index.js":[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
