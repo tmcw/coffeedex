@@ -75,17 +75,15 @@ var queryOverpass = function (center, kv, callback) {
 };
 
 // # Stores
-var locationStartTracking = Reflux.createAction();
 var locationStore = Reflux.createStore({
   location: null,
   init: function () {
-    this.listenTo(locationStartTracking, this.startTracking);
-  },
-  startTracking: function () {
     var _this2 = this;
-    navigator.geolocation.getCurrentPosition(function (res) {
+    this.watcher = navigator.geolocation.watchPosition(function (res) {
+      if (!_this2.location || (_this2.location && haversine(_this2.location, res.coords) > 10)) {
+        _this2.trigger(res.coords);
+      }
       _this2.location = res.coords;
-      _this2.trigger(_this2.location);
     });
   }
 });
@@ -96,14 +94,15 @@ var nodeStore = Reflux.createStore({
   nodes: [],
   init: function () {
     this.listenTo(nodeLoad, this.load);
+    this.listenTo(locationStore, this.load);
     this.listenTo(nodeSave, this.save);
   },
-  load: function (centerpoint) {
+  load: function (center) {
     var _this3 = this;
     queryOverpass(center, KEYPAIR, function (err, resp, map) {
       if (err) return console.error(err);
       _this3.nodes = _this3.nodes.concat(parser(resp.responseXML, KEYPAIR));
-      _this3.trigger();
+      _this3.trigger(_this3.nodes);
     });
   },
   save: function (comment, xml, tag) {
@@ -157,6 +156,33 @@ var kill = function (fn) {
   };
 };
 
+var Auth = React.createClass({
+  displayName: "Auth",
+  mixins: [Reflux.connect(userStore, "user")],
+  render: function () {
+    return (
+    /* jshint ignore:start */
+    React.createElement("a", {
+      href: "#",
+      className: "button col12 unround " + (this.state.user ? "icon account" : "icon account"),
+      onClick: kill(userLogin)
+    }, "log in"));
+  }
+});
+
+var Location = React.createClass({
+  displayName: "Location",
+  mixins: [Reflux.connect(locationStore, "location")],
+  render: function () {
+    return (
+    /* jshint ignore:start */
+    React.createElement("a", {
+      href: "#",
+      className: "icon compass"
+    }));
+  }
+});
+
 var Page = React.createClass({
   displayName: "Page",
   mixins: [Reflux.connect(locationStore, "location"), Reflux.connect(userStore, "user")],
@@ -172,30 +198,20 @@ var Page = React.createClass({
     return (
     /* jshint ignore:start */
     React.createElement("div", {
-      className: "col12 pad2y"
+      className: "col12"
     }, React.createElement("div", {
       className: "col12 clearfix pad1y  space-bottom1"
     }, React.createElement("div", {
       className: "margin3 col6"
     }, React.createElement("div", {
-      className: "col3 center"
+      className: "col12 pad1"
     }, React.createElement("img", {
-      height: "92",
-      width: "120",
+      height: "46",
+      width: "60",
       src: "./assets/logo.png"
-    })), React.createElement("div", {
-      className: "col9 pad2y"
-    }, React.createElement("a", {
-      href: "#",
-      className: "fill-green button col6 unround icon user",
-      onClick: kill(userLogin)
-    }, this.state.user ? "log out" : "log in"), this.state.location ? (React.createElement("div", {
-      className: "col6 center pad1 fill-grey code"
-    }, this.state.location.latitude.toFixed(3), ", ", this.state.location.longitude.toFixed(3))) : (React.createElement("a", {
-      href: "#",
-      className: "fill-blue button col6 unround icon compass",
-      onClick: kill(locationStartTracking)
-    }, "find me"))))), React.createElement("div", {
+    }), "COFFEE DEX"), React.createElement("div", {
+      className: "col12 clearfix"
+    }, React.createElement(Auth, null), React.createElement(Location, null)))), React.createElement("div", {
       className: "col12"
     }, React.createElement(RouteHandler, null))));
   }
@@ -209,7 +225,6 @@ var List = React.createClass({
   mixins: [Reflux.connect(nodeStore, "nodes")],
   /* jshint ignore:start */
   render: function () {
-    console.log(this.state);
     return React.createElement("div", null, this.state.nodes.sort(function (a, b) {
       return haversine(location, a.location) - haversine(location, b.location);
     }).map(function (res) {
@@ -248,7 +263,7 @@ var Result = React.createClass({
 var Editor = React.createClass({
   displayName: "Editor",
   getInitialState: function () {
-    return { price: this.props.res.tags[KEYPAIR.k] || 2 };
+    return { price: this.props.res.tags["price:coffee"] || 2 };
   },
   setPrice: function (e) {
     return _this.setState({ price: e.target.value });

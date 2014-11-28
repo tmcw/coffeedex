@@ -61,16 +61,14 @@ var queryOverpass = (center, kv, callback) => {
 };
 
 // # Stores
-var locationStartTracking = Reflux.createAction();
 var locationStore = Reflux.createStore({
   location: null,
   init() {
-    this.listenTo(locationStartTracking, this.startTracking);
-  },
-  startTracking() {
-    navigator.geolocation.getCurrentPosition(res => {
+    this.watcher = navigator.geolocation.watchPosition(res => {
+      if (!this.location || (this.location && haversine(this.location, res.coords) > 10)) {
+        this.trigger(res.coords);
+      }
       this.location = res.coords;
-      this.trigger(this.location);
     });
   }
 });
@@ -81,13 +79,14 @@ var nodeStore = Reflux.createStore({
   nodes: [],
   init() {
     this.listenTo(nodeLoad, this.load);
+    this.listenTo(locationStore, this.load);
     this.listenTo(nodeSave, this.save);
   },
-  load(centerpoint) {
+  load(center) {
     queryOverpass(center, KEYPAIR, (err, resp, map) => {
       if (err) return console.error(err);
       this.nodes = this.nodes.concat(parser(resp.responseXML, KEYPAIR));
-      this.trigger();
+      this.trigger(this.nodes);
     });
   },
   save(comment, xml, tag) {
@@ -135,6 +134,30 @@ var userStore = Reflux.createStore({
 // Utilities for views
 var kill = (fn) => (e) => { e.preventDefault(); fn(); };
 
+var Auth = React.createClass({
+  mixins: [Reflux.connect(userStore, 'user')],
+  render() {
+    return (
+      /* jshint ignore:start */
+      <a href='#'
+        className={'button col12 unround ' + (this.state.user ? 'icon account' : 'icon account')}
+        onClick={kill(userLogin)}>log in</a>
+      /* jshint ignore:end */
+    );
+  }
+});
+
+var Location = React.createClass({
+  mixins: [Reflux.connect(locationStore, 'location')],
+  render() {
+    return (
+      /* jshint ignore:start */
+      <a href='#' className='icon compass'></a>
+      /* jshint ignore:end */
+    );
+  }
+});
+
 var Page = React.createClass({
   mixins: [Reflux.connect(locationStore, 'location'), Reflux.connect(userStore, 'user')],
   componentDidMount() {
@@ -148,24 +171,16 @@ var Page = React.createClass({
   render() {
     return (
       /* jshint ignore:start */
-      <div className='col12 pad2y'>
+      <div className='col12'>
         <div className='col12 clearfix pad1y  space-bottom1'>
           <div className='margin3 col6'>
-            <div className='col3 center'>
-              <img height='92' width='120' src='./assets/logo.png' />
+            <div className='col12 pad1'>
+              <img height='46' width='60' src='./assets/logo.png' />
+              COFFEE DEX
             </div>
-            <div className='col9 pad2y'>
-              <a href='#'
-                className='fill-green button col6 unround icon user'
-                onClick={kill(userLogin)}>{this.state.user ? 'log out' : 'log in'}</a>
-              {this.state.location ? (
-                <div className='col6 center pad1 fill-grey code'>
-                  {this.state.location.latitude.toFixed(3)}, {this.state.location.longitude.toFixed(3)}
-                </div>
-              ) : (<a href='#'
-                className='fill-blue button col6 unround icon compass'
-                onClick={kill(locationStartTracking)}>find me</a>
-              )}
+            <div className='col12 clearfix'>
+              <Auth />
+              <Location />
             </div>
           </div>
         </div>
@@ -183,7 +198,6 @@ var List = React.createClass({
   mixins: [Reflux.connect(nodeStore, 'nodes')],
   /* jshint ignore:start */
   render() {
-    console.log(this.state);
     return <div>
       {this.state.nodes
         .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
@@ -217,7 +231,7 @@ var Result = React.createClass({
 
 var Editor = React.createClass({
     getInitialState() {
-      return { price: this.props.res.tags[KEYPAIR.k] || 2 };
+      return { price: this.props.res.tags['price:coffee'] || 2 };
     },
     setPrice: (e) => this.setState({ price: e.target.value }),
     save(e) {
