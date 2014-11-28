@@ -1,4 +1,5 @@
 var React = require('react'),
+  Reflux = require('reflux'),
   Router = require('react-router'),
   { Link, Route, RouteHandler, DefaultRoute } = Router,
   osmAuth = require('osm-auth'),
@@ -64,12 +65,12 @@ var locationStartTracking = Reflux.createAction();
 var locationStore = Reflux.createStore({
   location: null,
   init() {
-    this.listenTo(startTracking, this.startTracking);
+    this.listenTo(locationStartTracking, this.startTracking);
   },
   startTracking() {
     navigator.geolocation.getCurrentPosition(res => {
       this.location = res.coords;
-      this.trigger();
+      this.trigger(this.location);
     });
   }
 });
@@ -122,13 +123,11 @@ var auth = osmAuth({
 var userLogin = Reflux.createAction();
 var userStore = Reflux.createStore({
   user: null,
-  init() {
-    this.listenTo(userLogin, this.login);
-  },
+  init() { this.listenTo(userLogin, this.login); },
   login() {
     auth.authenticate((err, details) => {
       this.user = auth.authenticated();
-      this.trigger();
+      this.trigger(this.user);
     });
   }
 });
@@ -137,6 +136,7 @@ var userStore = Reflux.createStore({
 var kill = (fn) => (e) => { e.preventDefault(); fn(); };
 
 var Page = React.createClass({
+  mixins: [Reflux.connect(locationStore, 'location'), Reflux.connect(userStore, 'user')],
   componentDidMount() {
     if (location.search && !auth.authenticated()) {
       var oauth_token = qs.parse(location.search.replace('?', '')).oauth_token;
@@ -160,7 +160,7 @@ var Page = React.createClass({
                 onClick={kill(userLogin)}>{this.state.user ? 'log out' : 'log in'}</a>
               {this.state.location ? (
                 <div className='col6 center pad1 fill-grey code'>
-                  {this.state.location.coords.latitude.toFixed(3)}, {this.state.location.coords.longitude.toFixed(3)}
+                  {this.state.location.latitude.toFixed(3)}, {this.state.location.longitude.toFixed(3)}
                 </div>
               ) : (<a href='#'
                 className='fill-blue button col6 unround icon compass'
@@ -172,7 +172,6 @@ var Page = React.createClass({
         <div className='col12'>
           <RouteHandler/>
         </div>
-        <a className='col12 center pad1 quiet' href='https://github.com/tmcw/coffeedex'>?</a>
       </div>
       /* jshint ignore:end */
     );
@@ -180,13 +179,17 @@ var Page = React.createClass({
 });
 
 var List = React.createClass({
+  getInitialState: () => { return { nodes: [] }; },
   mixins: [Reflux.connect(nodeStore, 'nodes')],
   /* jshint ignore:start */
-  render: () => <div>
-    {this.state.nodes
-      .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
-      .map(res => <Result key={res.id} res={res} />)}
-  </div>
+  render() {
+    console.log(this.state);
+    return <div>
+      {this.state.nodes
+        .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
+        .map(res => <Result key={res.id} res={res} />)}
+    </div>
+  }
   /* jshint ignore:end */
 });
 
@@ -214,7 +217,7 @@ var Result = React.createClass({
 
 var Editor = React.createClass({
     getInitialState() {
-      return { price: this.props.res.tags['cost:coffee'] || 2 };
+      return { price: this.props.res.tags[KEYPAIR.k] || 2 };
     },
     setPrice: (e) => this.setState({ price: e.target.value }),
     save(e) {
