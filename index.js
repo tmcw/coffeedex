@@ -5,14 +5,19 @@ var React = require('react/addons'),
   osmAuth = require('osm-auth'),
   haversine = require('haversine'),
   xhr = require('xhr'),
+  currency = require('./currency_symbols.json'),
   qs = require('querystring');
 
 window.React = React;
 
-const KEYPAIR = { k: 'amenity', v: 'cafe' };
-const VERSION = 'COFFEE DEX 2001';
-const API06 = 'http://api.openstreetmap.org/api/0.6/';
-const OVERPASS = 'http://overpass-api.de/api/interpreter';
+const KEYPAIR = { k: 'amenity', v: 'cafe' },
+  TAG = 'cost:coffee',
+  VERSION = 'COFFEE DEX 2001',
+  API06 = 'http://api.openstreetmap.org/api/0.6/',
+  OVERPASS = 'http://overpass-api.de/api/interpreter',
+  MBX = 'pk.eyJ1IjoidG1jdyIsImEiOiIzczJRVGdRIn0.DKkDbTPnNUgHqTDBg7_zRQ',
+  MAP = 'tmcw.kbh273ee',
+  PIN = 'pin-l-cafe';
 
 // # Parsing & Producing XML
 var a = (nl) => Array.prototype.slice.call(nl),
@@ -35,19 +40,22 @@ var parser = (xml, kv) =>
     .filter(node => node.tags[kv.k] === kv.v);
 var serialize = (xml) => serializer.serializeToString(xml)
   .replace('xmlns="http://www.w3.org/1999/xhtml"', '');
-var changesetChange = (comment) => `<osm><changeset>
-    <tag k='created_by' v='${VERSION}' />
-    <tag k='comment' v='${comment}' />
+var escape = _ => _.replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+var changesetCreate = (comment) => `<osm><changeset>
+    <tag k="created_by" v="${VERSION}" />
+    <tag k="comment" v="${escape(comment)}" />
   </changeset></osm>`;
 var changesetChange = (node, tag, id) => {
   a(node.getElementsByTagName('tag'))
-    .filter(tag => tags.getAttribute('k') === tag.k)
+    .filter(tag => tag.getAttribute('k') === tag.k)
     .forEach(tag =>  node.removeChild(tag));
+  node.setAttribute('changeset', id);
   var newTag = node.appendChild(document.createElement('tag'));
   newTag.setAttribute('k', tag.k); newTag.setAttribute('v', tag.v);
   return `<osmChange version="0.3" generator="${VERSION}">
-  <modify>${serialize(node)}</modify>
-  </osmChange>`.replace(/changeset=\"\d+\"/, `changeset="${id}"`);
+    <modify>${serialize(node)}</modify>
+    </osmChange>`;
 };
 var queryOverpass = (center, kv, callback) => {
   const RADIUS = 0.01;
@@ -77,9 +85,7 @@ var nodeLoad = Reflux.createAction();
 var nodeSave = Reflux.createAction();
 var nodeStore = Reflux.createStore({
   nodes: {},
-  getInitialState() {
-    return this.nodes;
-  },
+  getInitialState() { return this.nodes; },
   init() {
     this.listenTo(nodeLoad, this.load);
     this.listenTo(locationStore, this.load);
@@ -88,12 +94,24 @@ var nodeStore = Reflux.createStore({
   load(center) {
     queryOverpass(center, KEYPAIR, (err, resp, map) => {
       if (err) return console.error(err);
-      parser(resp.responseXML, KEYPAIR).forEach(node => this.nodes[node.id] = node);
+      this.loadNodes(parser(resp.responseXML, KEYPAIR).map(node => node.id));
+    });
+  },
+  loadNodes(ids) {
+    ids = ids.filter(id => !this.nodes[id]);
+    if (!ids.length) return;
+    xhr({ uri: `${API06}nodes/?nodes=${ids.join(',')}`, method: 'GET' }, (err, resp, body) => {
+      parser(resp.responseXML, KEYPAIR).forEach(node => {
+        if (!this.nodes[node.id]) this.nodes[node.id] = node;
+      });
       this.trigger(this.nodes);
     });
   },
-  save(comment, xml, tag) {
+  save(res, price, currency) {
     const XMLHEADER = { header: { 'Content-Type': 'text/xml' } };
+    var xml = res.xml;
+    var tag = { k: TAG, v: currency + price };
+    var comment = `Updating coffee price to ${currency} ${price} for ${res.tags.name}`;
     auth.xhr({ method: 'PUT', prefix: false, options: XMLHEADER,
       content: changesetCreate(comment),
       path: `${API06}changeset/create`
@@ -117,7 +135,7 @@ var nodeStore = Reflux.createStore({
 var auth = osmAuth({
   oauth_consumer_key: 'VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw',
   oauth_secret: 'ugrQJAmn1zgdn73rn9tKCRl6JQHaZkcen2z3JpAb',
-  auto: false,
+  auto: true,
   landing: 'index.html',
   singlepage: true
 });
@@ -150,6 +168,18 @@ var Auth = React.createClass({
   }
 });
 
+var StaticMap = React.createClass({
+  render() {
+    return (
+      /* jshint ignore:start */
+      <img src={`https://api.tiles.mapbox.com/v4/${MAP}/${PIN}` +
+        `(${this.props.location.longitude},${this.props.location.latitude})` +
+        `/${this.props.location.longitude},${this.props.location.latitude},15/300x200@2x.png?access_token=${MBX}`} />
+      /* jshint ignore:end */
+    );
+  }
+});
+
 var Location = React.createClass({
   mixins: [Reflux.connect(locationStore, 'location')],
   render() {
@@ -174,10 +204,6 @@ var Page = React.createClass({
     return (
       /* jshint ignore:start */
       <div className='margin3 col6'>
-        <div className='col12 clearfix pad1y  space-bottom1'>
-          <Auth />
-          <Location />
-        </div>
         <div className='col12'>
           <RouteHandler/>
         </div>
@@ -207,9 +233,9 @@ var Result = React.createClass({
     return <div className='pad0 col12 clearfix'>
       <Link to='editor' params={{ osmId: this.props.res.id }}
           className='big'>
-        {this.props.res.tags['cost:coffee'] ?
+        {this.props.res.tags[TAG] ?
           (<div className='price text-right pad1x'>
-              ${this.props.res.tags['cost:coffee']}
+              ${this.props.res.tags[TAG]}
           </div>) :
           <div className='price pad1x text-right'>
               <span className='icon pencil'></span>
@@ -223,26 +249,48 @@ var Result = React.createClass({
 
 var Editor = React.createClass({
   mixins: [Reflux.connect(nodeStore, 'nodes'), State, React.addons.LinkedStateMixin],
-  getInitialState() {
-    return {
-      price: 2
-    };
+  getInitialState() { return { price: 0, currency: '$' }; },
+  statics: {
+    willTransitionTo(transition, params) {
+      nodeStore.loadNodes([params.osmId]);
+    },
   },
   save(e) {
     e.preventDefault();
-    nodeSave(this.state.comment, { k: KEYPAIR.k, v: this.state.price },
-      this.props.res.xml);
+    var node = this.state.nodes[this.getParams().osmId];
+    nodeSave(node, this.state.price, this.state.currency);
   },
   render() {
-    console.log(this.state);
+    var node = this.state.nodes[this.getParams().osmId];
     /* jshint ignore:start */
-    return <div className='pad0y'>
-      $<input
-        valueLink={this.linkState('price')}
-        className='short' type='number' />
-      <a href='#'
-        onClick={this.save}
-        className='button short unround icon plus'>Save</a>
+    if (!node) return <div>loading</div>;
+    return <div className='col12'>
+      <Link to='list' className='home icon button unround fill-grey col12'>home</Link>
+      <StaticMap location={node.location} />
+      <div className='pad1 col12 clearfix'>
+        <div className='col12'>
+          <div className='center'>
+            how much for a cup of joe at
+          </div>
+          <h1 className='center'>
+            {node.tags.name}
+          </h1>
+        </div>
+        <div className='limit-mobile'>
+          <div className='col12 clearfix space-bottom1'>
+            <select
+              valueLink={this.linkState('currency')}
+              className='coffee-select'>
+              {currency.map(c => <option key={c[0]} value={c[0]}>{c[1]}</option>)}
+            </select>
+            <input valueLink={this.linkState('price')}
+              className='coffee-input' type='number' />
+          </div>
+          <a href='#'
+            onClick={this.save}
+          className='button col12 icon plus pad1 unround'>Save</a>
+        </div>
+      </div>
     </div>;
     /* jshint ignore:end */
   }
@@ -251,8 +299,8 @@ var Editor = React.createClass({
 var routes = (
   /* jshint ignore:start */
   <Route handler={Page} path='/'>
-      <DefaultRoute name='list' handler={List} />
-      <Route name='editor' path='/edit/:osmId' handler={Editor} />
+    <DefaultRoute name='list' handler={List} />
+    <Route name='editor' path='/edit/:osmId' handler={Editor} />
   </Route>
   /* jshint ignore:end */
 );
