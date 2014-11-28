@@ -1,7 +1,7 @@
-var React = require('react'),
+var React = require('react/addons'),
   Reflux = require('reflux'),
   Router = require('react-router'),
-  { Link, Route, RouteHandler, DefaultRoute } = Router,
+  { State, Link, Route, RouteHandler, DefaultRoute } = Router,
   osmAuth = require('osm-auth'),
   haversine = require('haversine'),
   xhr = require('xhr'),
@@ -76,7 +76,10 @@ var locationStore = Reflux.createStore({
 var nodeLoad = Reflux.createAction();
 var nodeSave = Reflux.createAction();
 var nodeStore = Reflux.createStore({
-  nodes: [],
+  nodes: {},
+  getInitialState() {
+    return this.nodes;
+  },
   init() {
     this.listenTo(nodeLoad, this.load);
     this.listenTo(locationStore, this.load);
@@ -85,7 +88,7 @@ var nodeStore = Reflux.createStore({
   load(center) {
     queryOverpass(center, KEYPAIR, (err, resp, map) => {
       if (err) return console.error(err);
-      this.nodes = this.nodes.concat(parser(resp.responseXML, KEYPAIR));
+      parser(resp.responseXML, KEYPAIR).forEach(node => this.nodes[node.id] = node);
       this.trigger(this.nodes);
     });
   },
@@ -140,8 +143,8 @@ var Auth = React.createClass({
     return (
       /* jshint ignore:start */
       <a href='#'
-        className={'button col12 unround ' + (this.state.user ? 'icon account' : 'icon account')}
-        onClick={kill(userLogin)}>log in</a>
+        className={(this.state.user ? 'icon account' : 'icon account quiet')}
+        onClick={kill(userLogin)}></a>
       /* jshint ignore:end */
     );
   }
@@ -159,7 +162,6 @@ var Location = React.createClass({
 });
 
 var Page = React.createClass({
-  mixins: [Reflux.connect(locationStore, 'location'), Reflux.connect(userStore, 'user')],
   componentDidMount() {
     if (location.search && !auth.authenticated()) {
       var oauth_token = qs.parse(location.search.replace('?', '')).oauth_token;
@@ -171,18 +173,10 @@ var Page = React.createClass({
   render() {
     return (
       /* jshint ignore:start */
-      <div className='col12'>
+      <div className='margin3 col6'>
         <div className='col12 clearfix pad1y  space-bottom1'>
-          <div className='margin3 col6'>
-            <div className='col12 pad1'>
-              <img height='46' width='60' src='./assets/logo.png' />
-              COFFEE DEX
-            </div>
-            <div className='col12 clearfix'>
-              <Auth />
-              <Location />
-            </div>
-          </div>
+          <Auth />
+          <Location />
         </div>
         <div className='col12'>
           <RouteHandler/>
@@ -193,13 +187,13 @@ var Page = React.createClass({
   }
 });
 
+var values = obj => Object.keys(obj).map(key => obj[key]);
 var List = React.createClass({
-  getInitialState: () => { return { nodes: [] }; },
   mixins: [Reflux.connect(nodeStore, 'nodes')],
   /* jshint ignore:start */
   render() {
     return <div>
-      {this.state.nodes
+      {values(this.state.nodes)
         .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
         .map(res => <Result key={res.id} res={res} />)}
     </div>
@@ -211,55 +205,54 @@ var Result = React.createClass({
   render() {
     /* jshint ignore:start */
     return <div className='pad0 col12 clearfix'>
-      <div className='margin3 col6 truncate pad0y'>
-        <Link to='editor' params={{ osmId: this.props.res.id }}
-            className='big'>
-          {this.props.res.tags['cost:coffee'] ?
-            (<div className='price text-right pad1x'>
-                ${this.props.res.tags['cost:coffee']}
-            </div>) :
-            <div className='price pad1x text-right'>
-                <span className='icon pencil'></span>
-            </div>}
-          {this.props.res.tags.name}
-        </Link>
-      </div>
+      <Link to='editor' params={{ osmId: this.props.res.id }}
+          className='big'>
+        {this.props.res.tags['cost:coffee'] ?
+          (<div className='price text-right pad1x'>
+              ${this.props.res.tags['cost:coffee']}
+          </div>) :
+          <div className='price pad1x text-right'>
+              <span className='icon pencil'></span>
+          </div>}
+        {this.props.res.tags.name}
+      </Link>
     </div>;
     /* jshint ignore:end */
   }
 });
 
 var Editor = React.createClass({
-    getInitialState() {
-      return { price: this.props.res.tags['price:coffee'] || 2 };
-    },
-    setPrice: (e) => this.setState({ price: e.target.value }),
-    save(e) {
-      e.preventDefault();
-      nodeSave(this.state.comment, { k: KEYPAIR.k, v: this.state.price },
-        this.props.res.xml);
-    },
-    render() {
-      /* jshint ignore:start */
-      return <div className='pad0y'>
-        $<input
-          onChange={this.setPrice}
-          value={this.state.price}
-          className='short'
-          type='number' />
-        <a href='#'
-          onClick={this.save}
-          className='button short unround icon plus'>Save</a>
-      </div>;
-      /* jshint ignore:end */
-    }
+  mixins: [Reflux.connect(nodeStore, 'nodes'), State, React.addons.LinkedStateMixin],
+  getInitialState() {
+    return {
+      price: 2
+    };
+  },
+  save(e) {
+    e.preventDefault();
+    nodeSave(this.state.comment, { k: KEYPAIR.k, v: this.state.price },
+      this.props.res.xml);
+  },
+  render() {
+    console.log(this.state);
+    /* jshint ignore:start */
+    return <div className='pad0y'>
+      $<input
+        valueLink={this.linkState('price')}
+        className='short' type='number' />
+      <a href='#'
+        onClick={this.save}
+        className='button short unround icon plus'>Save</a>
+    </div>;
+    /* jshint ignore:end */
+  }
 });
 
 var routes = (
   /* jshint ignore:start */
   <Route handler={Page} path='/'>
-    <DefaultRoute name='list' handler={List} />
-    <Route name='editor' path='/edit/:osmId' handler={Editor} />
+      <DefaultRoute name='list' handler={List} />
+      <Route name='editor' path='/edit/:osmId' handler={Editor} />
   </Route>
   /* jshint ignore:end */
 );
