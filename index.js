@@ -19,6 +19,8 @@ const KEYPAIR = { k: 'amenity', v: 'cafe' },
   MAP = 'tmcw.kbh273ee',
   PIN = 'pin-l-cafe';
 
+L.mapbox.accessToken = MBX;
+
 // # Parsing & Producing XML
 var a = (nl) => Array.prototype.slice.call(nl),
   attr = (n, k) => n.getAttribute(k),
@@ -67,6 +69,10 @@ var queryOverpass = (center, kv, callback) => {
   (node["${kv.k}"="${kv.v}"](${bbox});); out body; >; out skel qt;`;
   xhr({ uri: OVERPASS, method: 'POST', body: query }, callback);
 };
+var queryOverpassAll = (callback) => {
+  var query = `[out:json][timeout:1000];(node["cost:coffee"];);out body; >; out skel qt;`;
+  xhr({ uri: OVERPASS, method: 'POST', body: query }, callback);
+};
 
 // # Stores
 var locationStore = Reflux.createStore({
@@ -77,6 +83,33 @@ var locationStore = Reflux.createStore({
         this.trigger(res.coords);
       }
       this.location = res.coords;
+    });
+  }
+});
+
+var worldNodeLoad = Reflux.createAction();
+var worldNodeStore = Reflux.createStore({
+  nodes: null,
+  getInitialState() { return this.nodes; },
+  init() { this.listenTo(worldNodeLoad, this.load); },
+  load() {
+    queryOverpassAll((err, resp, json) => {
+      if (err) return console.error(err);
+      this.nodes = {
+        type: 'FeatureCollection',
+        features: JSON.parse(json).elements.map((elem) => {
+          elem.tags.title = elem.tags.name || '';
+          elem.tags.description = elem.tags[TAG];
+          elem.tags['marker-symbol'] = 'cafe';
+          elem.tags['marker-color'] = '#5a3410';
+          return {
+            type: 'Feature',
+            properties: elem.tags,
+            geometry: { type: 'Point', coordinates: [elem.lon, elem.lat]  }
+          };
+        })
+      };
+      this.trigger(this.nodes);
     });
   }
 });
@@ -171,8 +204,8 @@ var LogIn = React.createClass({
           onClick={userLogin}
           className='button col12 fill-green icon account'>Log in to OpenStreetMap</button>
       </div>
-      /* jshint ignore:end */
     );
+    /* jshint ignore:end */
   }
 });
 
@@ -230,6 +263,9 @@ var List = React.createClass({
             .map(res => <Result key={res.id} res={res} />)}
         </div> :
       <LogIn />}
+      <div className='center dark'>
+        <Link className='button stroke quiet space-top1 icon globe' to='world_map'>World Map</Link>
+      </div>
     </div>);
   }
   /* jshint ignore:end */
@@ -273,6 +309,34 @@ var Success = React.createClass({
     return <Link to='list' className='col12 center pad4'>
       <h2><span className='big icon check'></span> Saved!</h2>
     </Link>;
+  }
+  /* jshint ignore:end */
+});
+
+var WorldMap = React.createClass({
+  mixins: [Navigation, Reflux.connect(worldNodeStore, 'nodes')],
+  statics: {
+    willTransitionTo(transition, params) {
+      worldNodeLoad();
+    }
+  },
+  /* jshint ignore:start */
+  componentDidMount() {
+    this.map = L.mapbox.map(this.refs.map.getDOMNode(), MAP, {
+      zoomControl: false
+    });
+    if (this.state.nodes) this.map.featureLayer.setGeoJSON(this.state.nodes);
+  },
+  componentDidUpdate() {
+    if (this.state.nodes) this.map.featureLayer.setGeoJSON(this.state.nodes);
+  },
+  render() {
+    return <div>
+      <div ref='map' className='pin-top pin-bottom' id='map'></div>
+      <Link
+        to='list'
+        className='home icon button fill-navy dark pin-top unround col12'>home</Link>
+    </div>;
   }
   /* jshint ignore:end */
 });
@@ -354,6 +418,7 @@ var routes = (
   /* jshint ignore:start */
   <Route handler={Page} path='/'>
     <DefaultRoute name='list' handler={List} />
+    <Route name='world_map' path='/world_map' handler={WorldMap} />
     <Route name='success' path='/success' handler={Success} />
     <Route name='editor' path='/edit/:osmId' handler={Editor} />
   </Route>
