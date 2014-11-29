@@ -360,13 +360,7 @@ var routes = (
   /* jshint ignore:end */
 );
 
-var router = Router.create({
-  routes,
-  onError() {
-    console.log(arguments);
-  }
-});
-
+var router = Router.create({ routes });
 
 if (location.search && !auth.authenticated()) {
   var oauth_token = qs.parse(location.search.replace('?', '')).oauth_token;
