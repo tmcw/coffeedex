@@ -2,6 +2,7 @@
   color:#fff;
 }
 
+
 /* http://www.colourlovers.com/palette/45488/french_vanilla */
 body {
   background: #5f3711;
@@ -57,4 +58,19 @@ input[type=number].coffee-input {
 
 .italic {
     font-style:italic;
+}
+
+.t-fade-enter {
+  opacity: 0.01;
+  transition: opacity .5s ease-in;
+}
+.t-fade-enter.t-fade-enter-active {
+  opacity: 1;
+}
+.t-fade-leave {
+  opacity: 1;
+  transition: opacity .5s ease-in;
+}
+.t-fade-leave.t-fade-leave-active {
+  opacity: 0.01;
 }

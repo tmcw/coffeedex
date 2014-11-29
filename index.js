@@ -44,10 +44,14 @@ var serialize = (xml) => serializer.serializeToString(xml)
   .replace('xmlns="http://www.w3.org/1999/xhtml"', '');
 var escape = _ => _.replace(/&/g, '&amp;')
   .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// Generate the XML payload necessary to open a new changeset in OSM
 var changesetCreate = (comment) => `<osm><changeset>
     <tag k="created_by" v="${VERSION}" />
     <tag k="comment" v="${escape(comment)}" />
   </changeset></osm>`;
+// After the OSM changeset is opened, we need to send the changes:
+// this generates the necessary XML to add or update a specific
+// tag on a single node.
 var changesetChange = (node, tag, id) => {
   a(node.getElementsByTagName('tag'))
     .filter(tagElem => tagElem.getAttribute('k') === tag.k)
@@ -127,7 +131,8 @@ var nodeStore = Reflux.createStore({
   load(center) {
     queryOverpass(center, KEYPAIR, (err, resp, map) => {
       if (err) return console.error(err);
-      this.loadNodes(parser(resp.responseXML, KEYPAIR).map(node => node.id));
+      parser(resp.responseXML, KEYPAIR)
+        .map(node => node.id).forEach(id => this.loadNodes([id]));
     });
   },
   loadNodes(ids) {
@@ -191,15 +196,13 @@ var userStore = Reflux.createStore({
   }
 });
 
-
-// Utilities for views
-var kill = (fn) => (e) => { e.preventDefault(); fn(); };
-
 var LogIn = React.createClass({
   render() {
     /* jshint ignore:start */
     return (<div className='pad2'>
-        <div className='pad1 space-bottom1'>COFFEE DEX is built on OpenStreetMap and requires an OpenStreetMap account.</div>
+        <div className='pad1 space-bottom1'>
+          COFFEE DEX is built on OpenStreetMap and requires an OpenStreetMap account.
+        </div>
         <button
           onClick={userLogin}
           className='button col12 fill-green icon account'>Log in to OpenStreetMap</button>
@@ -215,7 +218,8 @@ var StaticMap = React.createClass({
       /* jshint ignore:start */
       <img src={`https://api.tiles.mapbox.com/v4/${MAP}/${PIN}` +
         `(${this.props.location.longitude},${this.props.location.latitude})` +
-        `/${this.props.location.longitude},${this.props.location.latitude},15/300x200@2x.png?access_token=${MBX}`} />
+        `/${this.props.location.longitude},${this.props.location.latitude}` +
+        `,15/300x200@2x.png?access_token=${MBX}`} />
       /* jshint ignore:end */
     );
   }
@@ -245,7 +249,8 @@ var List = React.createClass({
       <div className='clearfix col12'>
         <div className='pad2 fill-darken0 clearfix'>
           <div className='col4'>
-            <img width={300/2} height={230/2} className='inline' src='assets/logo_inverted.png' />
+            <img width={300/2} height={230/2}
+              className='inline' src='assets/logo_inverted.png' />
           </div>
           <div className='col8 pad2y pad1x'>
             <h3>COFFEE DEX</h3>
@@ -258,13 +263,23 @@ var List = React.createClass({
           {!values(this.state.nodes).length && <div className='pad4 center'>
             Loading...
           </div>}
+          <React.addons.CSSTransitionGroup transitionName="t-fade">
           {values(this.state.nodes)
-            .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
+            .sort((a, b) =>
+              haversine(location, a.location) - haversine(location, b.location))
             .map(res => <Result key={res.id} res={res} />)}
+          </React.addons.CSSTransitionGroup>
         </div> :
       <LogIn />}
       <div className='center dark'>
-        <Link className='button stroke quiet space-top1 icon globe' to='world_map'>World Map</Link>
+        <div className='pill space-top1'>
+          <Link
+            className='button stroke quiet icon globe'
+            to='world_map'>World Map</Link>
+          <Link
+            className='button stroke quiet'
+            to='help'>Help</Link>
+        </div>
       </div>
     </div>);
   }
@@ -279,7 +294,7 @@ var Result = React.createClass({
       className='pad1 col12 clearfix fill-coffee space-bottom1'>
       <div className='price-tag round'>
         {this.props.res.tags[TAG] ?
-              this.props.res.tags[TAG] : <span className='icon pencil'></span>}
+          this.props.res.tags[TAG] : <span className='icon pencil'></span>}
       </div>
       <strong>{this.props.res.tags.name}</strong>
     </Link>;
@@ -309,6 +324,30 @@ var Success = React.createClass({
     return <Link to='list' className='col12 center pad4'>
       <h2><span className='big icon check'></span> Saved!</h2>
     </Link>;
+  }
+  /* jshint ignore:end */
+});
+
+var Help = React.createClass({
+  /* jshint ignore:start */
+  render() {
+    return <div>
+      <Link
+        to='list'
+        className='home icon button fill-darken2 col12'>home</Link>
+      <div className='pad1y'>
+        <div className='round fill-lighten0 pad2 dark'>
+          <p><strong>COFFEE DEX</strong> is a community project that aims to track the price of house coffee everywhere.</p>
+          <p>The data is stored in <a href='http://osm.org/'>OpenStreetMap</a>, a free and open source map of the world, as tags on existing coffeehops. There are 150,000+.</p>
+          <p>This is also an open source project. You can view the source code, clone it, fork it, and make new things with it as inspiration or raw parts.</p>
+          <a className='button stroke icon github col12 space-bottom1' href='http://github.com/tmcw/coffeedex'>COFFEE DEX on GitHub</a>
+          <h2>FAQ</h2>
+          <ul>
+            <li><strong>Which coffee?</strong> This site tracks the price of <em>house coffee</em> for here. In many cases, that means a 12oz drip, but if all coffees are pour-overs or your country uses different standard size, the overriding rule is cheapest-here.</li>
+          </ul>
+        </div>
+      </div>
+    </div>;
   }
   /* jshint ignore:end */
 });
@@ -420,6 +459,7 @@ var routes = (
     <DefaultRoute name='list' handler={List} />
     <Route name='world_map' path='/world_map' handler={WorldMap} />
     <Route name='success' path='/success' handler={Success} />
+    <Route name='help' path='/help' handler={Help} />
     <Route name='editor' path='/edit/:osmId' handler={Editor} />
   </Route>
   /* jshint ignore:end */

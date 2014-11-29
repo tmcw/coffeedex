@@ -1,5 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/Users/tmcw/src/coffeedex/currency_symbols.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
   [
     "USD",
     "$"
@@ -76,9 +76,13 @@ var serialize = function (xml) {
 var escape = function (_) {
   return _.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 };
+// Generate the XML payload necessary to open a new changeset in OSM
 var changesetCreate = function (comment) {
   return "<osm><changeset>\n    <tag k=\"created_by\" v=\"" + VERSION + "\" />\n    <tag k=\"comment\" v=\"" + escape(comment) + "\" />\n  </changeset></osm>";
 };
+// After the OSM changeset is opened, we need to send the changes:
+// this generates the necessary XML to add or update a specific
+// tag on a single node.
 var changesetChange = function (node, tag, id) {
   a(node.getElementsByTagName("tag")).filter(function (tagElem) {
     return tagElem.getAttribute("k") === tag.k;
@@ -163,9 +167,11 @@ var nodeStore = Reflux.createStore({
     var _this3 = this;
     queryOverpass(center, KEYPAIR, function (err, resp, map) {
       if (err) return console.error(err);
-      _this3.loadNodes(parser(resp.responseXML, KEYPAIR).map(function (node) {
+      parser(resp.responseXML, KEYPAIR).map(function (node) {
         return node.id;
-      }));
+      }).forEach(function (id) {
+        return _this3.loadNodes([id]);
+      });
     });
   },
   loadNodes: function (ids) {
@@ -232,14 +238,6 @@ var userStore = Reflux.createStore({
   }
 });
 
-
-// Utilities for views
-var kill = function (fn) {
-  return function (e) {
-    e.preventDefault();fn();
-  };
-};
-
 var LogIn = React.createClass({
   displayName: "LogIn",
   render: function () {
@@ -262,7 +260,7 @@ var StaticMap = React.createClass({
     return (
     /* jshint ignore:start */
     React.createElement("img", {
-      src: "https://api.tiles.mapbox.com/v4/" + MAP + "/" + PIN + ("(" + this.props.location.longitude + "," + this.props.location.latitude + ")") + ("/" + this.props.location.longitude + "," + this.props.location.latitude + ",15/300x200@2x.png?access_token=" + MBX)
+      src: "https://api.tiles.mapbox.com/v4/" + MAP + "/" + PIN + ("(" + this.props.location.longitude + "," + this.props.location.latitude + ")") + ("/" + this.props.location.longitude + "," + this.props.location.latitude) + (",15/300x200@2x.png?access_token=" + MBX)
     }));
   }
 });
@@ -309,19 +307,26 @@ var List = React.createClass({
       className: "pad2"
     }, !values(this.state.nodes).length && React.createElement("div", {
       className: "pad4 center"
-    }, "Loading..."), values(this.state.nodes).sort(function (a, b) {
+    }, "Loading..."), React.createElement(React.addons.CSSTransitionGroup, {
+      transitionName: "t-fade"
+    }, values(this.state.nodes).sort(function (a, b) {
       return haversine(location, a.location) - haversine(location, b.location);
     }).map(function (res) {
       return React.createElement(Result, {
         key: res.id,
         res: res
       });
-    })) : React.createElement(LogIn, null), React.createElement("div", {
+    }))) : React.createElement(LogIn, null), React.createElement("div", {
       className: "center dark"
+    }, React.createElement("div", {
+      className: "pill space-top1"
     }, React.createElement(Link, {
-      className: "button stroke quiet space-top1 icon globe",
+      className: "button stroke quiet icon globe",
       to: "world_map"
-    }, "World Map"))));
+    }, "World Map"), React.createElement(Link, {
+      className: "button stroke quiet",
+      to: "help"
+    }, "Help")))));
   }
   /* jshint ignore:end */
 });
@@ -370,6 +375,27 @@ var Success = React.createClass({
     }, React.createElement("h2", null, React.createElement("span", {
       className: "big icon check"
     }), " Saved!"));
+  }
+  /* jshint ignore:end */
+});
+
+var Help = React.createClass({
+  displayName: "Help",
+  /* jshint ignore:start */
+  render: function () {
+    return React.createElement("div", null, React.createElement(Link, {
+      to: "list",
+      className: "home icon button fill-darken2 col12"
+    }, "home"), React.createElement("div", {
+      className: "pad1y"
+    }, React.createElement("div", {
+      className: "round fill-lighten0 pad2 dark"
+    }, React.createElement("p", null, React.createElement("strong", null, "COFFEE DEX"), " is a community project that aims to track the price of house coffee everywhere."), React.createElement("p", null, "The data is stored in ", React.createElement("a", {
+      href: "http://osm.org/"
+    }, "OpenStreetMap"), ", a free and open source map of the world, as tags on existing coffeehops. There are 150,000+."), React.createElement("p", null, "This is also an open source project. You can view the source code, clone it, fork it, and make new things with it as inspiration or raw parts."), React.createElement("a", {
+      className: "button stroke icon github col12 space-bottom1",
+      href: "http://github.com/tmcw/coffeedex"
+    }, "COFFEE DEX on GitHub"), React.createElement("h2", null, "FAQ"), React.createElement("ul", null, React.createElement("li", null, React.createElement("strong", null, "Which coffee?"), " This site tracks the price of ", React.createElement("em", null, "house coffee"), " for here. In many cases, that means a 12oz drip, but if all coffees are pour-overs or your country uses different standard size, the overriding rule is cheapest-here.")))));
   }
   /* jshint ignore:end */
 });
@@ -500,6 +526,10 @@ React.createElement(Route, {
   name: "success",
   path: "/success",
   handler: Success
+}), React.createElement(Route, {
+  name: "help",
+  path: "/help",
+  handler: Help
 }), React.createElement(Route, {
   name: "editor",
   path: "/edit/:osmId",
