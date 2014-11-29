@@ -1,5 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/Users/tmcw/src/coffeedex/currency_symbols.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
   [
     "USD",
     "$"
@@ -23,6 +23,7 @@ var Reflux = require("reflux");
 
 var Router = require("react-router");
 
+var NotFoundRoute = Router.NotFoundRoute;
 var Navigation = Router.Navigation;
 var State = Router.State;
 var Link = Router.Link;
@@ -169,7 +170,7 @@ var nodeStore = Reflux.createStore({
 var auth = osmAuth({
   oauth_consumer_key: "VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw",
   oauth_secret: "ugrQJAmn1zgdn73rn9tKCRl6JQHaZkcen2z3JpAb",
-  auto: true,
+  auto: false,
   landing: "index.html",
   singlepage: true
 });
@@ -178,7 +179,11 @@ var userLogin = Reflux.createAction();
 var userStore = Reflux.createStore({
   user: null,
   init: function () {
+    this.user = auth.authenticated();
     this.listenTo(userLogin, this.login);
+  },
+  getInitialState: function () {
+    return this.user;
   },
   login: function () {
     var _this4 = this;
@@ -189,6 +194,7 @@ var userStore = Reflux.createStore({
   }
 });
 
+
 // Utilities for views
 var kill = function (fn) {
   return function (e) {
@@ -196,17 +202,18 @@ var kill = function (fn) {
   };
 };
 
-var Auth = React.createClass({
-  displayName: "Auth",
-  mixins: [Reflux.connect(userStore, "user")],
+var LogIn = React.createClass({
+  displayName: "LogIn",
   render: function () {
-    return (
     /* jshint ignore:start */
-    React.createElement("a", {
-      href: "#",
-      className: (this.state.user ? "icon account" : "icon account quiet"),
-      onClick: kill(userLogin)
-    }));
+    return (React.createElement("div", {
+      className: "pad2"
+    }, React.createElement("div", {
+      className: "pad1 space-bottom1"
+    }, "COFFEE DEX is built on OpenStreetMap and requires an OpenStreetMap account."), React.createElement("button", {
+      onClick: userLogin,
+      className: "button col12 fill-green icon account"
+    }, "Log in to OpenStreetMap")));
   }
 });
 
@@ -221,29 +228,8 @@ var StaticMap = React.createClass({
   }
 });
 
-var Location = React.createClass({
-  displayName: "Location",
-  mixins: [Reflux.connect(locationStore, "location")],
-  render: function () {
-    return (
-    /* jshint ignore:start */
-    React.createElement("a", {
-      href: "#",
-      className: "icon compass"
-    }));
-  }
-});
-
 var Page = React.createClass({
   displayName: "Page",
-  componentDidMount: function () {
-    if (location.search && !auth.authenticated()) {
-      var oauth_token = qs.parse(location.search.replace("?", "")).oauth_token;
-      auth.bootstrapToken(oauth_token, function (err, res) {
-        location.href = location.href.replace(/\?.*$/, "");
-      });
-    }
-  },
   render: function () {
     return (
     /* jshint ignore:start */
@@ -262,7 +248,7 @@ var values = function (obj) {
 };
 var List = React.createClass({
   displayName: "List",
-  mixins: [Reflux.connect(nodeStore, "nodes")],
+  mixins: [Reflux.connect(nodeStore, "nodes"), Reflux.connect(userStore, "user")],
   /* jshint ignore:start */
   render: function () {
     return (React.createElement("div", null, React.createElement("div", {
@@ -280,7 +266,7 @@ var List = React.createClass({
       className: "col8 pad2y pad1x"
     }, React.createElement("h3", null, "COFFEE DEX"), React.createElement("p", {
       className: "italic"
-    }, "how much does a cup of coffee for here cost, everywhere?")))), React.createElement("div", {
+    }, "how much does a cup of coffee for here cost, everywhere?")))), this.state.user ? React.createElement("div", {
       className: "pad2"
     }, !values(this.state.nodes).length && React.createElement("div", {
       className: "pad4 center"
@@ -291,7 +277,7 @@ var List = React.createClass({
         key: res.id,
         res: res
       });
-    }))));
+    })) : React.createElement(LogIn, null)));
   }
   /* jshint ignore:end */
 });
@@ -441,11 +427,32 @@ React.createElement(Route, {
   handler: Editor
 })));
 
-Router.run(routes, function (Handler) {
-  /* jshint ignore:start */
-  React.render(React.createElement(Handler, null), document.body);
-  /* jshint ignore:end */
+var router = Router.create({
+  routes: routes,
+  onError: function () {
+    console.log(arguments);
+  }
 });
+
+
+if (location.search && !auth.authenticated()) {
+  var oauth_token = qs.parse(location.search.replace("?", "")).oauth_token;
+  auth.bootstrapToken(oauth_token, function (err, res) {
+    userStore.user = true;
+    userStore.trigger(userStore.user);
+    router.run(function (Handler) {
+      /* jshint ignore:start */
+      React.render(React.createElement(Handler, null), document.body);
+      /* jshint ignore:end */
+    });
+  });
+} else {
+  router.run(function (Handler) {
+    /* jshint ignore:start */
+    React.render(React.createElement(Handler, null), document.body);
+    /* jshint ignore:end */
+  });
+}
 
 },{"./currency_symbols.json":"/Users/tmcw/src/coffeedex/currency_symbols.json","haversine":"/Users/tmcw/src/coffeedex/node_modules/haversine/haversine.js","osm-auth":"/Users/tmcw/src/coffeedex/node_modules/osm-auth/index.js","querystring":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/querystring-es3/index.js","react-router":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/index.js","react/addons":"/Users/tmcw/src/coffeedex/node_modules/react/addons.js","reflux":"/Users/tmcw/src/coffeedex/node_modules/reflux/src/index.js","xhr":"/Users/tmcw/src/coffeedex/node_modules/xhr/index.js"}],"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/buffer/index.js":[function(require,module,exports){
 /*!

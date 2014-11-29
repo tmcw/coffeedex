@@ -1,7 +1,7 @@
 var React = require('react/addons'),
   Reflux = require('reflux'),
   Router = require('react-router'),
-  { Navigation, State, Link, Route, RouteHandler, DefaultRoute } = Router,
+  { NotFoundRoute, Navigation, State, Link, Route, RouteHandler, DefaultRoute } = Router,
   osmAuth = require('osm-auth'),
   haversine = require('haversine'),
   xhr = require('xhr'),
@@ -135,7 +135,7 @@ var nodeStore = Reflux.createStore({
 var auth = osmAuth({
   oauth_consumer_key: 'VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw',
   oauth_secret: 'ugrQJAmn1zgdn73rn9tKCRl6JQHaZkcen2z3JpAb',
-  auto: true,
+  auto: false,
   landing: 'index.html',
   singlepage: true
 });
@@ -143,7 +143,13 @@ var auth = osmAuth({
 var userLogin = Reflux.createAction();
 var userStore = Reflux.createStore({
   user: null,
-  init() { this.listenTo(userLogin, this.login); },
+  init() {
+    this.user = auth.authenticated();
+    this.listenTo(userLogin, this.login);
+  },
+  getInitialState() {
+    return this.user;
+  },
   login() {
     auth.authenticate((err, details) => {
       this.user = auth.authenticated();
@@ -152,17 +158,19 @@ var userStore = Reflux.createStore({
   }
 });
 
+
 // Utilities for views
 var kill = (fn) => (e) => { e.preventDefault(); fn(); };
 
-var Auth = React.createClass({
-  mixins: [Reflux.connect(userStore, 'user')],
+var LogIn = React.createClass({
   render() {
-    return (
-      /* jshint ignore:start */
-      <a href='#'
-        className={(this.state.user ? 'icon account' : 'icon account quiet')}
-        onClick={kill(userLogin)}></a>
+    /* jshint ignore:start */
+    return (<div className='pad2'>
+        <div className='pad1 space-bottom1'>COFFEE DEX is built on OpenStreetMap and requires an OpenStreetMap account.</div>
+        <button
+          onClick={userLogin}
+          className='button col12 fill-green icon account'>Log in to OpenStreetMap</button>
+      </div>
       /* jshint ignore:end */
     );
   }
@@ -180,26 +188,7 @@ var StaticMap = React.createClass({
   }
 });
 
-var Location = React.createClass({
-  mixins: [Reflux.connect(locationStore, 'location')],
-  render() {
-    return (
-      /* jshint ignore:start */
-      <a href='#' className='icon compass'></a>
-      /* jshint ignore:end */
-    );
-  }
-});
-
 var Page = React.createClass({
-  componentDidMount() {
-    if (location.search && !auth.authenticated()) {
-      var oauth_token = qs.parse(location.search.replace('?', '')).oauth_token;
-      auth.bootstrapToken(oauth_token, (err, res) => {
-         location.href = location.href.replace(/\?.*$/, '');
-      });
-    }
-  },
   render() {
     return (
       /* jshint ignore:start */
@@ -215,7 +204,7 @@ var Page = React.createClass({
 
 var values = obj => Object.keys(obj).map(key => obj[key]);
 var List = React.createClass({
-  mixins: [Reflux.connect(nodeStore, 'nodes')],
+  mixins: [Reflux.connect(nodeStore, 'nodes'), Reflux.connect(userStore, 'user')],
   /* jshint ignore:start */
   render() {
     return (
@@ -231,14 +220,16 @@ var List = React.createClass({
           </div>
         </div>
       </div>
-      <div className='pad2'>
-        {!values(this.state.nodes).length && <div className='pad4 center'>
-          Loading...
-        </div>}
-        {values(this.state.nodes)
-          .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
-          .map(res => <Result key={res.id} res={res} />)}
-      </div>
+      {this.state.user ?
+        <div className='pad2'>
+          {!values(this.state.nodes).length && <div className='pad4 center'>
+            Loading...
+          </div>}
+          {values(this.state.nodes)
+            .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
+            .map(res => <Result key={res.id} res={res} />)}
+        </div> :
+      <LogIn />}
     </div>);
   }
   /* jshint ignore:end */
@@ -369,8 +360,29 @@ var routes = (
   /* jshint ignore:end */
 );
 
-Router.run(routes, Handler => {
-  /* jshint ignore:start */
-  React.render(<Handler/>, document.body);
-  /* jshint ignore:end */
+var router = Router.create({
+  routes,
+  onError() {
+    console.log(arguments);
+  }
 });
+
+
+if (location.search && !auth.authenticated()) {
+  var oauth_token = qs.parse(location.search.replace('?', '')).oauth_token;
+  auth.bootstrapToken(oauth_token, (err, res) => {
+    userStore.user = true;
+    userStore.trigger(userStore.user);
+    router.run(Handler => {
+      /* jshint ignore:start */
+      React.render(<Handler/>, document.body);
+      /* jshint ignore:end */
+    });
+  });
+} else {
+  router.run(Handler => {
+    /* jshint ignore:start */
+    React.render(<Handler/>, document.body);
+    /* jshint ignore:end */
+  });
+}
