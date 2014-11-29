@@ -78,10 +78,10 @@ var changesetCreate = function (comment) {
   return "<osm><changeset>\n    <tag k=\"created_by\" v=\"" + VERSION + "\" />\n    <tag k=\"comment\" v=\"" + escape(comment) + "\" />\n  </changeset></osm>";
 };
 var changesetChange = function (node, tag, id) {
-  a(node.getElementsByTagName("tag")).filter(function (tag) {
-    return tag.getAttribute("k") === tag.k;
-  }).forEach(function (tag) {
-    return node.removeChild(tag);
+  a(node.getElementsByTagName("tag")).filter(function (tagElem) {
+    return tagElem.getAttribute("k") === tag.k;
+  }).forEach(function (tagElem) {
+    return node.removeChild(tagElem);
   });
   node.setAttribute("changeset", id);
   var newTag = node.appendChild(document.createElement("tag"));
@@ -160,7 +160,7 @@ var nodeStore = Reflux.createStore({
           path: "" + API06 + "changeset/" + id + "/close"
         }, function (err, id) {
           if (err) console.error(err);
-          alert("Success!");
+          router.transitionTo("/success");
         });
       });
     });

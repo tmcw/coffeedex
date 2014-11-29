@@ -48,8 +48,8 @@ var changesetCreate = (comment) => `<osm><changeset>
   </changeset></osm>`;
 var changesetChange = (node, tag, id) => {
   a(node.getElementsByTagName('tag'))
-    .filter(tag => tag.getAttribute('k') === tag.k)
-    .forEach(tag =>  node.removeChild(tag));
+    .filter(tagElem => tagElem.getAttribute('k') === tag.k)
+    .forEach(tagElem =>  node.removeChild(tagElem));
   node.setAttribute('changeset', id);
   var newTag = node.appendChild(document.createElement('tag'));
   newTag.setAttribute('k', tag.k); newTag.setAttribute('v', tag.v);
@@ -125,7 +125,7 @@ var nodeStore = Reflux.createStore({
           path: `${API06}changeset/${id}/close`
         }, (err, id) => {
             if (err) console.error(err);
-            alert('Success!');
+            router.transitionTo('/success');
         });
       });
     });
