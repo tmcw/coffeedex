@@ -1,7 +1,7 @@
 var React = require('react/addons'),
   Reflux = require('reflux'),
   Router = require('react-router'),
-  { State, Link, Route, RouteHandler, DefaultRoute } = Router,
+  { Navigation, State, Link, Route, RouteHandler, DefaultRoute } = Router,
   osmAuth = require('osm-auth'),
   haversine = require('haversine'),
   xhr = require('xhr'),
@@ -99,7 +99,7 @@ var nodeStore = Reflux.createStore({
   },
   loadNodes(ids) {
     ids = ids.filter(id => !this.nodes[id]);
-    if (!ids.length) return;
+    if (!ids.length) return this.trigger(this.nodes);
     xhr({ uri: `${API06}nodes/?nodes=${ids.join(',')}`, method: 'GET' }, (err, resp, body) => {
       parser(resp.responseXML, KEYPAIR).forEach(node => {
         if (!this.nodes[node.id]) this.nodes[node.id] = node;
@@ -218,11 +218,28 @@ var List = React.createClass({
   mixins: [Reflux.connect(nodeStore, 'nodes')],
   /* jshint ignore:start */
   render() {
-    return <div>
-      {values(this.state.nodes)
-        .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
-        .map(res => <Result key={res.id} res={res} />)}
-    </div>
+    return (
+    <div>
+      <div className='clearfix col12'>
+        <div className='pad2 fill-darken0 clearfix'>
+          <div className='col4'>
+            <img width={300/2} height={230/2} className='inline' src='assets/logo_inverted.png' />
+          </div>
+          <div className='col8 pad2y pad1x'>
+            <h3>COFFEE DEX</h3>
+            <p className='italic'>how much does a cup of coffee for here cost, everywhere?</p>
+          </div>
+        </div>
+      </div>
+      <div className='pad2'>
+        {!values(this.state.nodes).length && <div className='pad4 center'>
+          Loading...
+        </div>}
+        {values(this.state.nodes)
+          .sort((a, b) => haversine(location, a.location) - haversine(location, b.location))
+          .map(res => <Result key={res.id} res={res} />)}
+      </div>
+    </div>);
   }
   /* jshint ignore:end */
 });
@@ -230,26 +247,68 @@ var List = React.createClass({
 var Result = React.createClass({
   render() {
     /* jshint ignore:start */
-    return <div className='pad0 col12 clearfix'>
-      <Link to='editor' params={{ osmId: this.props.res.id }}
-          className='big'>
+    return <Link to='editor'
+      params={{ osmId: this.props.res.id }}
+      className='pad1 col12 clearfix fill-coffee space-bottom1'>
+      <div className='price-tag round'>
         {this.props.res.tags[TAG] ?
-          (<div className='price text-right pad1x'>
-              ${this.props.res.tags[TAG]}
-          </div>) :
-          <div className='price pad1x text-right'>
-              <span className='icon pencil'></span>
-          </div>}
-        {this.props.res.tags.name}
-      </Link>
-    </div>;
+              this.props.res.tags[TAG] : <span className='icon pencil'></span>}
+      </div>
+      <strong>{this.props.res.tags.name}</strong>
+    </Link>;
     /* jshint ignore:end */
   }
 });
 
+var parseCurrency = str => {
+  var number = str.match(/[\d\.]+/), currency = str.match(/[^\d\.]+/);
+  return {
+    currency: currency || '$',
+    price: parseFloat((number && number[0]) || 0)
+  };
+};
+
+var Success = React.createClass({
+  mixins: [Navigation],
+  componentDidMount() {
+    setTimeout(() => {
+      if (this.isMounted()) {
+        this.transitionTo('list');
+      }
+    }, 1000);
+  },
+  /* jshint ignore:start */
+  render() {
+    return <Link to='list' className='col12 center pad4'>
+      <h2><span className='big icon check'></span> Saved!</h2>
+    </Link>;
+  }
+  /* jshint ignore:end */
+});
+
 var Editor = React.createClass({
-  mixins: [Reflux.connect(nodeStore, 'nodes'), State, React.addons.LinkedStateMixin],
-  getInitialState() { return { price: 0, currency: '$' }; },
+  mixins: [Reflux.listenTo(nodeStore, 'onNodeLoad', 'onNodeLoad'), State, React.addons.LinkedStateMixin],
+  onNodeLoad(nodes) {
+    var node = nodes[this.getParams().osmId];
+    if (node) {
+      if (node.tags[TAG]) {
+        var currency = parseCurrency(node.tags[TAG]);
+        this.setState({
+          currency: currency.currency,
+          price: currency.price,
+          node: node
+        });
+      } else {
+        this.setState({ node: node });
+      }
+    }
+  },
+  getInitialState() {
+    return {
+      currency: '$',
+      price: 0
+    };
+  },
   statics: {
     willTransitionTo(transition, params) {
       nodeStore.loadNodes([params.osmId]);
@@ -257,15 +316,19 @@ var Editor = React.createClass({
   },
   save(e) {
     e.preventDefault();
-    var node = this.state.nodes[this.getParams().osmId];
+    var node = this.state.node;
     nodeSave(node, this.state.price, this.state.currency);
   },
   render() {
-    var node = this.state.nodes[this.getParams().osmId];
+    var node = this.state.node;
     /* jshint ignore:start */
-    if (!node) return <div>loading</div>;
+    if (!node) return <div className='pad4 center'>
+      Loading...
+    </div>;
     return <div className='col12'>
-      <Link to='list' className='home icon button unround fill-grey col12'>home</Link>
+      <Link
+        to='list'
+        className='home icon button fill-darken0 unround col12'>home</Link>
       <StaticMap location={node.location} />
       <div className='pad1 col12 clearfix'>
         <div className='col12'>
@@ -288,7 +351,7 @@ var Editor = React.createClass({
           </div>
           <a href='#'
             onClick={this.save}
-          className='button col12 icon plus pad1 unround'>Save</a>
+          className='fill-darken1 button col12 icon plus pad1 unround'>Save</a>
         </div>
       </div>
     </div>;
@@ -300,6 +363,7 @@ var routes = (
   /* jshint ignore:start */
   <Route handler={Page} path='/'>
     <DefaultRoute name='list' handler={List} />
+    <Route name='success' path='/success' handler={Success} />
     <Route name='editor' path='/edit/:osmId' handler={Editor} />
   </Route>
   /* jshint ignore:end */

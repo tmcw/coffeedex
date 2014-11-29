@@ -1,5 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/Users/tmcw/src/coffeedex/currency_symbols.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
   [
     "USD",
     "$"
@@ -23,6 +23,7 @@ var Reflux = require("reflux");
 
 var Router = require("react-router");
 
+var Navigation = Router.Navigation;
 var State = Router.State;
 var Link = Router.Link;
 var Route = Router.Route;
@@ -133,7 +134,7 @@ var nodeStore = Reflux.createStore({
     ids = ids.filter(function (id) {
       return !_this3.nodes[id];
     });
-    if (!ids.length) return;
+    if (!ids.length) return this.trigger(this.nodes);
     xhr({ uri: "" + API06 + "nodes/?nodes=" + ids.join(","), method: "GET" }, function (err, resp, body) {
       parser(resp.responseXML, KEYPAIR).forEach(function (node) {
         if (!_this3.nodes[node.id]) _this3.nodes[node.id] = node;
@@ -264,14 +265,33 @@ var List = React.createClass({
   mixins: [Reflux.connect(nodeStore, "nodes")],
   /* jshint ignore:start */
   render: function () {
-    return React.createElement("div", null, values(this.state.nodes).sort(function (a, b) {
+    return (React.createElement("div", null, React.createElement("div", {
+      className: "clearfix col12"
+    }, React.createElement("div", {
+      className: "pad2 fill-darken0 clearfix"
+    }, React.createElement("div", {
+      className: "col4"
+    }, React.createElement("img", {
+      width: 300 / 2,
+      height: 230 / 2,
+      className: "inline",
+      src: "assets/logo_inverted.png"
+    })), React.createElement("div", {
+      className: "col8 pad2y pad1x"
+    }, React.createElement("h3", null, "COFFEE DEX"), React.createElement("p", {
+      className: "italic"
+    }, "how much does a cup of coffee for here cost, everywhere?")))), React.createElement("div", {
+      className: "pad2"
+    }, !values(this.state.nodes).length && React.createElement("div", {
+      className: "pad4 center"
+    }, "Loading..."), values(this.state.nodes).sort(function (a, b) {
       return haversine(location, a.location) - haversine(location, b.location);
     }).map(function (res) {
       return React.createElement(Result, {
         key: res.id,
         res: res
       });
-    }));
+    }))));
   }
   /* jshint ignore:end */
 });
@@ -280,28 +300,73 @@ var Result = React.createClass({
   displayName: "Result",
   render: function () {
     /* jshint ignore:start */
-    return React.createElement("div", {
-      className: "pad0 col12 clearfix"
-    }, React.createElement(Link, {
+    return React.createElement(Link, {
       to: "editor",
       params: { osmId: this.props.res.id },
-      className: "big"
-    }, this.props.res.tags[TAG] ? (React.createElement("div", {
-      className: "price text-right pad1x"
-    }, "$", this.props.res.tags[TAG])) : React.createElement("div", {
-      className: "price pad1x text-right"
-    }, React.createElement("span", {
+      className: "pad1 col12 clearfix fill-coffee space-bottom1"
+    }, React.createElement("div", {
+      className: "price-tag round"
+    }, this.props.res.tags[TAG] ? this.props.res.tags[TAG] : React.createElement("span", {
       className: "icon pencil"
-    })), this.props.res.tags.name));
+    })), React.createElement("strong", null, this.props.res.tags.name));
     /* jshint ignore:end */
   }
 });
 
+var parseCurrency = function (str) {
+  var number = str.match(/[\d\.]+/), currency = str.match(/[^\d\.]+/);
+  return {
+    currency: currency || "$",
+    price: parseFloat((number && number[0]) || 0)
+  };
+};
+
+var Success = React.createClass({
+  displayName: "Success",
+  mixins: [Navigation],
+  componentDidMount: function () {
+    var _this5 = this;
+    setTimeout(function () {
+      if (_this5.isMounted()) {
+        _this5.transitionTo("list");
+      }
+    }, 1000);
+  },
+  /* jshint ignore:start */
+  render: function () {
+    return React.createElement(Link, {
+      to: "list",
+      className: "col12 center pad4"
+    }, React.createElement("h2", null, React.createElement("span", {
+      className: "big icon check"
+    }), " Saved!"));
+  }
+  /* jshint ignore:end */
+});
+
 var Editor = React.createClass({
   displayName: "Editor",
-  mixins: [Reflux.connect(nodeStore, "nodes"), State, React.addons.LinkedStateMixin],
+  mixins: [Reflux.listenTo(nodeStore, "onNodeLoad", "onNodeLoad"), State, React.addons.LinkedStateMixin],
+  onNodeLoad: function (nodes) {
+    var node = nodes[this.getParams().osmId];
+    if (node) {
+      if (node.tags[TAG]) {
+        var currency = parseCurrency(node.tags[TAG]);
+        this.setState({
+          currency: currency.currency,
+          price: currency.price,
+          node: node
+        });
+      } else {
+        this.setState({ node: node });
+      }
+    }
+  },
   getInitialState: function () {
-    return { price: 0, currency: "$" };
+    return {
+      currency: "$",
+      price: 0
+    };
   },
   statics: {
     willTransitionTo: function (transition, params) {
@@ -309,18 +374,20 @@ var Editor = React.createClass({
     } },
   save: function (e) {
     e.preventDefault();
-    var node = this.state.nodes[this.getParams().osmId];
+    var node = this.state.node;
     nodeSave(node, this.state.price, this.state.currency);
   },
   render: function () {
-    var node = this.state.nodes[this.getParams().osmId];
+    var node = this.state.node;
     /* jshint ignore:start */
-    if (!node) return React.createElement("div", null, "loading");
+    if (!node) return React.createElement("div", {
+      className: "pad4 center"
+    }, "Loading...");
     return React.createElement("div", {
       className: "col12"
     }, React.createElement(Link, {
       to: "list",
-      className: "home icon button unround fill-grey col12"
+      className: "home icon button fill-darken0 unround col12"
     }, "home"), React.createElement(StaticMap, {
       location: node.location
     }), React.createElement("div", {
@@ -350,7 +417,7 @@ var Editor = React.createClass({
     })), React.createElement("a", {
       href: "#",
       onClick: this.save,
-      className: "button col12 icon plus pad1 unround"
+      className: "fill-darken1 button col12 icon plus pad1 unround"
     }, "Save"))));
     /* jshint ignore:end */
   }
@@ -364,6 +431,10 @@ React.createElement(Route, {
 }, React.createElement(DefaultRoute, {
   name: "list",
   handler: List
+}), React.createElement(Route, {
+  name: "success",
+  path: "/success",
+  handler: Success
 }), React.createElement(Route, {
   name: "editor",
   path: "/edit/:osmId",

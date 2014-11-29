@@ -1,11 +1,25 @@
+#coffee a {
+  color:#fff;
+}
+
+/* http://www.colourlovers.com/palette/45488/french_vanilla */
+body {
+  background: #5f3711;
+  color:#eee;
+}
+
+.fill-coffee {
+  background: #5f3711;
+}
+
 .coffee-select {
   border: 0;
   font-size:35px;
   display:inline-block;
   vertical-align: middle;
   width:40%;
-  background:#fff;
-  color:#666;
+  background:transparent;
+  color:#ddd;
   border-radius:0;
   -webkit-appearance:none;
   line-height:35px;
@@ -21,7 +35,8 @@ input[type=number].coffee-input {
   line-height:60px;
   height:85px;
   display:inline-block;
-  color:#000;
+  color:#fff;
+  background:transparent;
   width:60%;
   vertical-align: middle;
   padding:5px;
@@ -31,4 +46,15 @@ input[type=number].coffee-input {
 .limit-mobile {
   width:300px;
   margin:0 auto;
+}
+
+.price-tag {
+    display:inline-block;
+    width:50px;
+    text-align:center;
+    margin-right:10px;
+}
+
+.italic {
+    font-style:italic;
 }
