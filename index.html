@@ -27,5 +27,11 @@
         s.parentNode.insertBefore(t, s);
       })();
     </script>
+    <script>
+    Raven.config('https://64767213c79640d68b949475986415ce@app.getsentry.com/33852', {
+        // we highly recommend restricting exceptions to a domain in order to filter out clutter
+        whitelistUrls: ['macwright.org/coffeedex/']
+    }).install();
+    </script>
   </body>
 </html>
