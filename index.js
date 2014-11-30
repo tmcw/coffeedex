@@ -12,7 +12,7 @@ window.React = React;
 
 const KEYPAIR = { k: 'amenity', v: 'cafe' },
   TAG = 'cost:coffee',
-  VERSION = 'COFFEE DEX 2001',
+  VERSION = 'COFFEEDEX 2002',
   API06 = 'http://api.openstreetmap.org/api/0.6/',
   OVERPASS = 'http://overpass-api.de/api/interpreter',
   MBX = 'pk.eyJ1IjoidG1jdyIsImEiOiIzczJRVGdRIn0.DKkDbTPnNUgHqTDBg7_zRQ',
@@ -201,7 +201,7 @@ var LogIn = React.createClass({
     /* jshint ignore:start */
     return (<div className='pad2'>
         <div className='pad1 space-bottom1'>
-          COFFEE DEX is built on OpenStreetMap and requires an OpenStreetMap account.
+          COFFEEDEX is built on OpenStreetMap and requires an OpenStreetMap account.
         </div>
         <button
           onClick={userLogin}
@@ -253,7 +253,7 @@ var List = React.createClass({
               className='inline' src='assets/logo_inverted.png' />
           </div>
           <div className='col8 pad2y pad1x'>
-            <h3>COFFEE DEX</h3>
+            <h3>COFFEEDEX</h3>
             <p className='italic'>how much does a cup of coffee for here cost, everywhere?</p>
           </div>
         </div>
@@ -337,10 +337,11 @@ var Help = React.createClass({
         className='home icon button fill-darken2 col12'>home</Link>
       <div className='pad1y'>
         <div className='round fill-lighten0 pad2 dark'>
-          <p><strong>COFFEE DEX</strong> is a community project that aims to track the price of house coffee everywhere.</p>
+          <p><strong>COFFEEDEX</strong> is a community project that aims to track the price of house coffee everywhere.</p>
           <p>The data is stored in <a href='http://osm.org/'>OpenStreetMap</a>, a free and open source map of the world, as tags on existing coffeehops. There are 150,000+.</p>
           <p>This is also an open source project. You can view the source code, clone it, fork it, and make new things with it as inspiration or raw parts.</p>
-          <a className='button stroke icon github col12 space-bottom1' href='http://github.com/tmcw/coffeedex'>COFFEE DEX on GitHub</a>
+          <a className='button stroke icon github col12 space-bottom1' href='http://github.com/tmcw/coffeedex'>COFFEEDEX on GitHub</a>
+          <p>COFFEEDEX also works great on phones! Try it on your phone and if you like it, add it to your iPhone home screen and it'll look even prettier.</p>
           <h2>FAQ</h2>
           <ul>
             <li><strong>Which coffee?</strong> This site tracks the price of <em>house coffee</em> for here. In many cases, that means a 12oz drip, but if all coffees are pour-overs or your country uses different standard size, the overriding rule is cheapest-here.</li>
