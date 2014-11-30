@@ -63,8 +63,10 @@ var changesetChange = (node, tag, id) => {
     <modify>${serialize(node)}</modify>
     </osmChange>`;
 };
+var sortDistance = (location) =>
+  (a, b) => haversine(location, a.location) - haversine(location, b.location);
 var queryOverpass = (center, kv, callback) => {
-  const RADIUS = 0.01;
+  const RADIUS = 0.1;
   var bbox = [
     center.latitude - RADIUS, center.longitude - RADIUS,
     center.latitude + RADIUS, center.longitude + RADIUS
@@ -81,6 +83,7 @@ var queryOverpassAll = (callback) => {
 // # Stores
 var locationStore = Reflux.createStore({
   location: null,
+  getInitialState() { return this.location; },
   init() {
     this.watcher = navigator.geolocation.watchPosition(res => {
       if (!this.location || (this.location && haversine(this.location, res.coords) > 10)) {
@@ -132,6 +135,8 @@ var nodeStore = Reflux.createStore({
     queryOverpass(center, KEYPAIR, (err, resp, map) => {
       if (err) return console.error(err);
       parser(resp.responseXML, KEYPAIR)
+        .sort(sortDistance(center))
+        .slice(0, 50)
         .map(node => node.id).forEach(id => this.loadNodes([id]));
     });
   },
@@ -219,7 +224,7 @@ var StaticMap = React.createClass({
       <img src={`https://api.tiles.mapbox.com/v4/${MAP}/${PIN}` +
         `(${this.props.location.longitude},${this.props.location.latitude})` +
         `/${this.props.location.longitude},${this.props.location.latitude}` +
-        `,15/300x200@2x.png?access_token=${MBX}`} />
+        `,14/300x200@2x.png?access_token=${MBX}`} />
       /* jshint ignore:end */
     );
   }
@@ -241,7 +246,10 @@ var Page = React.createClass({
 
 var values = obj => Object.keys(obj).map(key => obj[key]);
 var List = React.createClass({
-  mixins: [Reflux.connect(nodeStore, 'nodes'), Reflux.connect(userStore, 'user')],
+  mixins: [
+    Reflux.connect(nodeStore, 'nodes'),
+    Reflux.connect(locationStore, 'location'),
+    Reflux.connect(userStore, 'user')],
   /* jshint ignore:start */
   render() {
     return (
@@ -265,13 +273,12 @@ var List = React.createClass({
           </div>}
           <React.addons.CSSTransitionGroup transitionName="t-fade">
           {values(this.state.nodes)
-            .sort((a, b) =>
-              haversine(location, a.location) - haversine(location, b.location))
+            .sort(sortDistance(this.state.location))
             .map(res => <Result key={res.id} res={res} />)}
           </React.addons.CSSTransitionGroup>
         </div> :
       <LogIn />}
-      <div className='center dark'>
+      <div className='center dark space-bottom1'>
         <div className='pill space-top1'>
           <Link
             className='button stroke quiet icon globe'
@@ -339,9 +346,11 @@ var Help = React.createClass({
         <div className='round fill-lighten0 pad2 dark'>
           <p><strong>COFFEEDEX</strong> is a community project that aims to track the price of house coffee everywhere.</p>
           <p>The data is stored in <a href='http://osm.org/'>OpenStreetMap</a>, a free and open source map of the world, as tags on existing coffeehops. There are 150,000+.</p>
+          <p>Maps in this application are &copy; <a href='http://mapbox.com/'>Mapbox</a>.</p>
+          <p>COFFEEDEX data stored in OpenStreetMap is <a href='http://www.openstreetmap.org/copyright'>available under the ODbL license.</a></p>
           <p>This is also an open source project. You can view the source code, clone it, fork it, and make new things with it as inspiration or raw parts.</p>
           <a className='button stroke icon github col12 space-bottom1' href='http://github.com/tmcw/coffeedex'>COFFEEDEX on GitHub</a>
-          <p>COFFEEDEX also works great on phones! Try it on your phone and if you like it, add it to your iPhone home screen and it'll look even prettier.</p>
+          <p><span className='icon mobile'></span> COFFEEDEX also works great on phones! Try it on your phone and add it to your iPhone home screen - it'll look even prettier.</p>
           <h2>FAQ</h2>
           <ul>
             <li><strong>Which coffee?</strong> This site tracks the price of <em>house coffee</em> for here. In many cases, that means a 12oz drip, but if all coffees are pour-overs or your country uses different standard size, the overriding rule is cheapest-here.</li>

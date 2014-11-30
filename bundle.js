@@ -1,5 +1,5 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/Users/tmcw/src/coffeedex/currency_symbols.json":[function(require,module,exports){
-module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
+module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=module.exports=[
   [
     "USD",
     "$"
@@ -42,7 +42,7 @@ var qs = require("querystring");
 
 window.React = React;
 
-var KEYPAIR = { k: "amenity", v: "cafe" }, TAG = "cost:coffee", VERSION = "COFFEE DEX 2001", API06 = "http://api.openstreetmap.org/api/0.6/", OVERPASS = "http://overpass-api.de/api/interpreter", MBX = "pk.eyJ1IjoidG1jdyIsImEiOiIzczJRVGdRIn0.DKkDbTPnNUgHqTDBg7_zRQ", MAP = "tmcw.kbh273ee", PIN = "pin-l-cafe";
+var KEYPAIR = { k: "amenity", v: "cafe" }, TAG = "cost:coffee", VERSION = "COFFEEDEX 2002", API06 = "http://api.openstreetmap.org/api/0.6/", OVERPASS = "http://overpass-api.de/api/interpreter", MBX = "pk.eyJ1IjoidG1jdyIsImEiOiIzczJRVGdRIn0.DKkDbTPnNUgHqTDBg7_zRQ", MAP = "tmcw.kbh273ee", PIN = "pin-l-cafe";
 
 L.mapbox.accessToken = MBX;
 
@@ -94,8 +94,13 @@ var changesetChange = function (node, tag, id) {
   newTag.setAttribute("k", tag.k);newTag.setAttribute("v", tag.v);
   return "<osmChange version=\"0.3\" generator=\"" + VERSION + "\">\n    <modify>" + serialize(node) + "</modify>\n    </osmChange>";
 };
+var sortDistance = function (location) {
+  return function (a, b) {
+    return haversine(location, a.location) - haversine(location, b.location);
+  };
+};
 var queryOverpass = function (center, kv, callback) {
-  var RADIUS = 0.01;
+  var RADIUS = 0.1;
   var bbox = [center.latitude - RADIUS, center.longitude - RADIUS, center.latitude + RADIUS, center.longitude + RADIUS].join(",");
   var query = "[out:xml][timeout:25];\n  (node[\"" + kv.k + "\"=\"" + kv.v + "\"](" + bbox + ");); out body; >; out skel qt;";
   xhr({ uri: OVERPASS, method: "POST", body: query }, callback);
@@ -108,6 +113,9 @@ var queryOverpassAll = function (callback) {
 // # Stores
 var locationStore = Reflux.createStore({
   location: null,
+  getInitialState: function () {
+    return this.location;
+  },
   init: function () {
     var _this = this;
     this.watcher = navigator.geolocation.watchPosition(function (res) {
@@ -167,7 +175,7 @@ var nodeStore = Reflux.createStore({
     var _this3 = this;
     queryOverpass(center, KEYPAIR, function (err, resp, map) {
       if (err) return console.error(err);
-      parser(resp.responseXML, KEYPAIR).map(function (node) {
+      parser(resp.responseXML, KEYPAIR).sort(sortDistance(center)).slice(0, 50).map(function (node) {
         return node.id;
       }).forEach(function (id) {
         return _this3.loadNodes([id]);
@@ -246,7 +254,7 @@ var LogIn = React.createClass({
       className: "pad2"
     }, React.createElement("div", {
       className: "pad1 space-bottom1"
-    }, "COFFEE DEX is built on OpenStreetMap and requires an OpenStreetMap account."), React.createElement("button", {
+    }, "COFFEEDEX is built on OpenStreetMap and requires an OpenStreetMap account."), React.createElement("button", {
       onClick: userLogin,
       className: "button col12 fill-green icon account"
     }, "Log in to OpenStreetMap")));
@@ -260,7 +268,7 @@ var StaticMap = React.createClass({
     return (
     /* jshint ignore:start */
     React.createElement("img", {
-      src: "https://api.tiles.mapbox.com/v4/" + MAP + "/" + PIN + ("(" + this.props.location.longitude + "," + this.props.location.latitude + ")") + ("/" + this.props.location.longitude + "," + this.props.location.latitude) + (",15/300x200@2x.png?access_token=" + MBX)
+      src: "https://api.tiles.mapbox.com/v4/" + MAP + "/" + PIN + ("(" + this.props.location.longitude + "," + this.props.location.latitude + ")") + ("/" + this.props.location.longitude + "," + this.props.location.latitude) + (",14/300x200@2x.png?access_token=" + MBX)
     }));
   }
 });
@@ -285,7 +293,7 @@ var values = function (obj) {
 };
 var List = React.createClass({
   displayName: "List",
-  mixins: [Reflux.connect(nodeStore, "nodes"), Reflux.connect(userStore, "user")],
+  mixins: [Reflux.connect(nodeStore, "nodes"), Reflux.connect(locationStore, "location"), Reflux.connect(userStore, "user")],
   /* jshint ignore:start */
   render: function () {
     return (React.createElement("div", null, React.createElement("div", {
@@ -301,7 +309,7 @@ var List = React.createClass({
       src: "assets/logo_inverted.png"
     })), React.createElement("div", {
       className: "col8 pad2y pad1x"
-    }, React.createElement("h3", null, "COFFEE DEX"), React.createElement("p", {
+    }, React.createElement("h3", null, "COFFEEDEX"), React.createElement("p", {
       className: "italic"
     }, "how much does a cup of coffee for here cost, everywhere?")))), this.state.user ? React.createElement("div", {
       className: "pad2"
@@ -309,15 +317,13 @@ var List = React.createClass({
       className: "pad4 center"
     }, "Loading..."), React.createElement(React.addons.CSSTransitionGroup, {
       transitionName: "t-fade"
-    }, values(this.state.nodes).sort(function (a, b) {
-      return haversine(location, a.location) - haversine(location, b.location);
-    }).map(function (res) {
+    }, values(this.state.nodes).sort(sortDistance(this.state.location)).map(function (res) {
       return React.createElement(Result, {
         key: res.id,
         res: res
       });
     }))) : React.createElement(LogIn, null), React.createElement("div", {
-      className: "center dark"
+      className: "center dark space-bottom1"
     }, React.createElement("div", {
       className: "pill space-top1"
     }, React.createElement(Link, {
@@ -390,12 +396,18 @@ var Help = React.createClass({
       className: "pad1y"
     }, React.createElement("div", {
       className: "round fill-lighten0 pad2 dark"
-    }, React.createElement("p", null, React.createElement("strong", null, "COFFEE DEX"), " is a community project that aims to track the price of house coffee everywhere."), React.createElement("p", null, "The data is stored in ", React.createElement("a", {
+    }, React.createElement("p", null, React.createElement("strong", null, "COFFEEDEX"), " is a community project that aims to track the price of house coffee everywhere."), React.createElement("p", null, "The data is stored in ", React.createElement("a", {
       href: "http://osm.org/"
-    }, "OpenStreetMap"), ", a free and open source map of the world, as tags on existing coffeehops. There are 150,000+."), React.createElement("p", null, "This is also an open source project. You can view the source code, clone it, fork it, and make new things with it as inspiration or raw parts."), React.createElement("a", {
+    }, "OpenStreetMap"), ", a free and open source map of the world, as tags on existing coffeehops. There are 150,000+."), React.createElement("p", null, "Maps in this application are \u00a9 ", React.createElement("a", {
+      href: "http://mapbox.com/"
+    }, "Mapbox"), "."), React.createElement("p", null, "COFFEEDEX data stored in OpenStreetMap is ", React.createElement("a", {
+      href: "http://www.openstreetmap.org/copyright"
+    }, "available under the ODbL license.")), React.createElement("p", null, "This is also an open source project. You can view the source code, clone it, fork it, and make new things with it as inspiration or raw parts."), React.createElement("a", {
       className: "button stroke icon github col12 space-bottom1",
       href: "http://github.com/tmcw/coffeedex"
-    }, "COFFEE DEX on GitHub"), React.createElement("h2", null, "FAQ"), React.createElement("ul", null, React.createElement("li", null, React.createElement("strong", null, "Which coffee?"), " This site tracks the price of ", React.createElement("em", null, "house coffee"), " for here. In many cases, that means a 12oz drip, but if all coffees are pour-overs or your country uses different standard size, the overriding rule is cheapest-here.")))));
+    }, "COFFEEDEX on GitHub"), React.createElement("p", null, React.createElement("span", {
+      className: "icon mobile"
+    }), " COFFEEDEX also works great on phones! Try it on your phone and add it to your iPhone home screen - it'll look even prettier."), React.createElement("h2", null, "FAQ"), React.createElement("ul", null, React.createElement("li", null, React.createElement("strong", null, "Which coffee?"), " This site tracks the price of ", React.createElement("em", null, "house coffee"), " for here. In many cases, that means a 12oz drip, but if all coffees are pour-overs or your country uses different standard size, the overriding rule is cheapest-here.")))));
   }
   /* jshint ignore:end */
 });

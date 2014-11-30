@@ -12,6 +12,7 @@ ES6 that uses 6to5 to make the code run everywhere.
   and [Overpass API](http://wiki.openstreetmap.org/wiki/Overpass_API)
 * Authenticates against [OpenStreetMap](http://www.openstreetmap.org/)
   with [osm-auth](https://github.com/osmlab/osm-auth)
+* Uses [Base](https://www.mapbox.com/base/) for CSS
 
 The code structure is simple: **all JavaScript is in index.js**.
 

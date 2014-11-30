@@ -2,6 +2,10 @@
   color:#fff;
 }
 
+#coffee p a {
+  text-decoration:underline;
+}
+
 
 /* http://www.colourlovers.com/palette/45488/french_vanilla */
 body {
