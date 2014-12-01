@@ -94,6 +94,10 @@ var locationStore = Reflux.createStore({
   }
 });
 
+// The worldNode store stores only data for the WorldMap component:
+// instead of loading a list with Overpass and detail with API 0.6,
+// this simply hits Overpass, and uses the easy-to-parse JSON output
+// instead of XML.
 var worldNodeLoad = Reflux.createAction();
 var worldNodeStore = Reflux.createStore({
   nodes: null,
@@ -121,6 +125,11 @@ var worldNodeStore = Reflux.createStore({
   }
 });
 
+// Here's where we store fully-formed OSM Nodes that correspond to matches.
+// These are listed with Overpass and then loaded in full with OSM API.
+// This two-step process imitates the ability to filter the OSM API - without
+// it, we'd have some very slow calls to the /map/ endpoint, instead of
+// fast calls to the /nodes endpoint.
 var nodeLoad = Reflux.createAction();
 var nodeSave = Reflux.createAction();
 var nodeStore = Reflux.createStore({
@@ -183,6 +192,8 @@ var auth = osmAuth({
   singlepage: true
 });
 
+// Here we store the user's logged-in / logged-out status so we can show
+// the authentication view instead of a list as an initial pageview.
 var userLogin = Reflux.createAction();
 var userStore = Reflux.createStore({
   user: null,
@@ -201,6 +212,10 @@ var userStore = Reflux.createStore({
   }
 });
 
+// # Components
+
+// A simple shout-out and log-in button that shoots a user into the OSM
+// oauth flow.
 var LogIn = React.createClass({
   render() {
     /* jshint ignore:start */
@@ -245,6 +260,8 @@ var Page = React.createClass({
 });
 
 var values = obj => Object.keys(obj).map(key => obj[key]);
+
+// A list of potential nodes for viewing and editing.
 var List = React.createClass({
   mixins: [
     Reflux.connect(nodeStore, 'nodes'),
@@ -293,6 +310,7 @@ var List = React.createClass({
   /* jshint ignore:end */
 });
 
+// A single list item
 var Result = React.createClass({
   render() {
     /* jshint ignore:start */
@@ -317,6 +335,9 @@ var parseCurrency = str => {
   };
 };
 
+// This view is shown briefly after a user completes an edit. The user
+// can either click/tap to go back to the list, or it'll do that automatically
+// in 1 second.
 var Success = React.createClass({
   mixins: [Navigation],
   componentDidMount() {
@@ -335,6 +356,8 @@ var Success = React.createClass({
   /* jshint ignore:end */
 });
 
+// The help page. Doesn't have any JavaScript functionality of its own -
+// this is static content.
 var Help = React.createClass({
   /* jshint ignore:start */
   render() {
@@ -362,6 +385,8 @@ var Help = React.createClass({
   /* jshint ignore:end */
 });
 
+// The WorldMap page. This uses the worldNodeLoad to show all tagged
+// nodes worldwide on an interactive Mapbox map.
 var WorldMap = React.createClass({
   mixins: [Navigation, Reflux.connect(worldNodeStore, 'nodes')],
   statics: {
@@ -390,6 +415,7 @@ var WorldMap = React.createClass({
   /* jshint ignore:end */
 });
 
+// The editor. This allows users to view and edit tags on single result items.
 var Editor = React.createClass({
   mixins: [Reflux.listenTo(nodeStore, 'onNodeLoad', 'onNodeLoad'), State, React.addons.LinkedStateMixin],
   onNodeLoad(nodes) {
@@ -463,6 +489,7 @@ var Editor = React.createClass({
   }
 });
 
+// Our router. This manages what URLs mean and where Links can go.
 var routes = (
   /* jshint ignore:start */
   <Route handler={Page} path='/'>
@@ -477,6 +504,10 @@ var routes = (
 
 var router = Router.create({ routes });
 
+// This is a little dirty: the router will rewrite paths it doesn't know,
+// including the path we desperately need to complete the OAuth dance.
+// So before booting it up, we notice if we need to bootstrap an oauth_token,
+// and if so, we do that before starting the application.
 if (location.search && !auth.authenticated()) {
   var oauth_token = qs.parse(location.search.replace('?', '')).oauth_token;
   auth.bootstrapToken(oauth_token, (err, res) => {
