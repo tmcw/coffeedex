@@ -18,7 +18,7 @@ const KEYPAIR = { k: 'amenity', v: 'cafe' },
   MBX = 'pk.eyJ1IjoidG1jdyIsImEiOiIzczJRVGdRIn0.DKkDbTPnNUgHqTDBg7_zRQ',
   MAP = 'tmcw.kbh273ee',
   PIN = 'pin-l-cafe',
-  LOC = 'pin-s'; 
+  LOC = 'pin-s';
 
 L.mapbox.accessToken = MBX;
 
@@ -83,11 +83,11 @@ var queryOverpassAll = (callback) => {
 
 // # Stores
 var locationStore = Reflux.createStore({
-  location: null,
+  location: { latitude: 0, longitude: 0 },
   getInitialState() { return this.location; },
   init() {
     this.watcher = navigator.geolocation.watchPosition(res => {
-      if (!this.location || (this.location && haversine(this.location, res.coords) > 10)) {
+      if (haversine(this.location, res.coords) > 10) {
         this.trigger(res.coords);
       }
       this.location = res.coords;
@@ -239,7 +239,7 @@ var StaticMap = React.createClass({
       /* jshint ignore:start */
       <img src={`https://api.tiles.mapbox.com/v4/${MAP}/` +
         `${PIN}(${this.props.location.longitude},${this.props.location.latitude}),` +
-        `${LOC}(${locationStore.location.longitude},${locationStore.location.latitude})` +
+        (this.props.self ? `${LOC}(${this.props.self.longitude},${this.props.self.latitude})` : '') +
         `/${this.props.location.longitude},${this.props.location.latitude}` +
         `,14/300x200@2x.png?access_token=${MBX}`} />
       /* jshint ignore:end */
@@ -419,7 +419,10 @@ var WorldMap = React.createClass({
 
 // The editor. This allows users to view and edit tags on single result items.
 var Editor = React.createClass({
-  mixins: [Reflux.listenTo(nodeStore, 'onNodeLoad', 'onNodeLoad'), State, React.addons.LinkedStateMixin],
+  mixins: [
+    Reflux.listenTo(nodeStore, 'onNodeLoad', 'onNodeLoad'),
+    Reflux.connect(locationStore, 'location'),
+    State, React.addons.LinkedStateMixin],
   onNodeLoad(nodes) {
     var node = nodes[this.getParams().osmId];
     if (node) {
@@ -461,7 +464,7 @@ var Editor = React.createClass({
       <Link
         to='list'
         className='home icon button fill-darken0 unround col12'>home</Link>
-      <StaticMap location={node.location} />
+      <StaticMap location={node.location} self={this.state.location} />
       <div className='pad1 col12 clearfix'>
         <div className='col12'>
           <div className='center'>
