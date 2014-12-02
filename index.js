@@ -17,7 +17,8 @@ const KEYPAIR = { k: 'amenity', v: 'cafe' },
   OVERPASS = 'http://overpass-api.de/api/interpreter',
   MBX = 'pk.eyJ1IjoidG1jdyIsImEiOiIzczJRVGdRIn0.DKkDbTPnNUgHqTDBg7_zRQ',
   MAP = 'tmcw.kbh273ee',
-  PIN = 'pin-l-cafe';
+  PIN = 'pin-l-cafe',
+  LOC = 'pin-s'; 
 
 L.mapbox.accessToken = MBX;
 
@@ -236,8 +237,9 @@ var StaticMap = React.createClass({
   render() {
     return (
       /* jshint ignore:start */
-      <img src={`https://api.tiles.mapbox.com/v4/${MAP}/${PIN}` +
-        `(${this.props.location.longitude},${this.props.location.latitude})` +
+      <img src={`https://api.tiles.mapbox.com/v4/${MAP}/` +
+        `${PIN}(${this.props.location.longitude},${this.props.location.latitude}),` +
+        `${LOC}(${locationStore.location.longitude},${locationStore.location.latitude})` +
         `/${this.props.location.longitude},${this.props.location.latitude}` +
         `,14/300x200@2x.png?access_token=${MBX}`} />
       /* jshint ignore:end */
