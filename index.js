@@ -10,11 +10,22 @@ var React = require('react/addons'),
 
 window.React = React;
 
+// Constants for API endpoints
+const API06 = 'http://api.openstreetmap.org/api/0.6/',
+  OVERPASS = 'http://overpass-api.de/api/interpreter';
+
+// Constants for our OAuth connection to OpenStreetMap.
+const OAUTH_CONSUMER_KEY = 'VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw',
+  OAUTH_SECRET = 'ugrQJAmn1zgdn73rn9tKCRl6JQHaZkcen2z3JpAb';
+
+// # Configuration
+// This is used to show certain nodes in the list: otherwise the ones
+// we're looking for would be crowded out by telephone poles etc.
 const KEYPAIR = { k: 'amenity', v: 'cafe' },
   TAG = 'cost:coffee',
+// The version string is added to changesets to let OSM know which
+// editor software is responsible for which changes.
   VERSION = 'COFFEEDEX 2002',
-  API06 = 'http://api.openstreetmap.org/api/0.6/',
-  OVERPASS = 'http://overpass-api.de/api/interpreter',
   MBX = 'pk.eyJ1IjoidG1jdyIsImEiOiIzczJRVGdRIn0.DKkDbTPnNUgHqTDBg7_zRQ',
   MAP = 'tmcw.kbh273ee',
   PIN = 'pin-l-cafe',
@@ -26,9 +37,14 @@ L.mapbox.accessToken = MBX;
 var a = (nl) => Array.prototype.slice.call(nl),
   attr = (n, k) => n.getAttribute(k),
   serializer = new XMLSerializer();
-// Given an XML DOM in OSM format and an object of the form { k, v }
+// Given an XML DOM in OSM format and an object of the form
+//
+//     { k, v }
+//
 // Find all nodes with that key combination and return them
-// in the form { xml: Node, tags: {}, id: 'osm-id' }
+// in the form
+//
+//     { xml: Node, tags: {}, id: 'osm-id' }
 var parser = (xml, kv) =>
   a(xml.getElementsByTagName('node')).map(node =>
     a(node.getElementsByTagName('tag')).reduce((memo, tag) => {
@@ -43,6 +59,9 @@ var parser = (xml, kv) =>
     .filter(node => node.tags[kv.k] === kv.v);
 var serialize = (xml) => serializer.serializeToString(xml)
   .replace('xmlns="http://www.w3.org/1999/xhtml"', '');
+// Since we're building XML the hacky way by formatting strings,
+// we'll need to escape strings so that places like "Charlie's Shop"
+// don't make invalid XML.
 var escape = _ => _.replace(/&/g, '&amp;')
   .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // Generate the XML payload necessary to open a new changeset in OSM
@@ -96,9 +115,12 @@ var locationStore = Reflux.createStore({
 });
 
 // The worldNode store stores only data for the WorldMap component:
-// instead of loading a list with Overpass and detail with API 0.6,
-// this simply hits Overpass, and uses the easy-to-parse JSON output
+// instead of loading a list with [Overpass API](http://wiki.openstreetmap.org/wiki/Overpass_API)
+// and detail with API 0.6, this simply hits Overpass, and uses the easy-to-parse JSON output
 // instead of XML.
+//
+// We then transform Overpass's JSON encoding into [GeoJSON](http://geojson.org/)
+// so Mapbox.js can display the points.
 var worldNodeLoad = Reflux.createAction();
 var worldNodeStore = Reflux.createStore({
   nodes: null,
@@ -129,8 +151,8 @@ var worldNodeStore = Reflux.createStore({
 // Here's where we store fully-formed OSM Nodes that correspond to matches.
 // These are listed with Overpass and then loaded in full with OSM API.
 // This two-step process imitates the ability to filter the OSM API - without
-// it, we'd have some very slow calls to the /map/ endpoint, instead of
-// fast calls to the /nodes endpoint.
+// it, we'd have some very slow calls to the `/map/` endpoint, instead of
+// fast calls to the `/nodes` endpoint.
 var nodeLoad = Reflux.createAction();
 var nodeSave = Reflux.createAction();
 var nodeStore = Reflux.createStore({
@@ -185,9 +207,11 @@ var nodeStore = Reflux.createStore({
   }
 });
 
+// osm-auth does the hard work of managing user authentication with
+// OpenStreetMap via the OAuth protocol.
 var auth = osmAuth({
-  oauth_consumer_key: 'VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw',
-  oauth_secret: 'ugrQJAmn1zgdn73rn9tKCRl6JQHaZkcen2z3JpAb',
+  oauth_consumer_key: OAUTH_CONSUMER_KEY,
+  oauth_secret: OAUTH_SECRET,
   auto: false,
   landing: 'index.html',
   singlepage: true
@@ -233,6 +257,10 @@ var LogIn = React.createClass({
   }
 });
 
+// A simple wrapper for a call to the [Mapbox Static Map API](https://www.mapbox.com/developers/api/static/)
+// that we use for editing pages: this gives a basic idea of where the coffee
+// shop is as well as a marker for your location. Helpful when there's
+// a Starbucks on every corner of an intersection.
 var StaticMap = React.createClass({
   render() {
     return (
@@ -265,6 +293,8 @@ var values = obj => Object.keys(obj).map(key => obj[key]);
 
 // A list of potential nodes for viewing and editing.
 var List = React.createClass({
+// We use Reflux's `.connect` method to listen for changes in stores
+// and automatically call setState to use their data here.
   mixins: [
     Reflux.connect(nodeStore, 'nodes'),
     Reflux.connect(locationStore, 'location'),
@@ -290,11 +320,9 @@ var List = React.createClass({
           {!values(this.state.nodes).length && <div className='pad4 center'>
             Loading...
           </div>}
-          <React.addons.CSSTransitionGroup transitionName="t-fade">
           {values(this.state.nodes)
             .sort(sortDistance(this.state.location))
             .map(res => <Result key={res.id} res={res} />)}
-          </React.addons.CSSTransitionGroup>
         </div> :
       <LogIn />}
       <div className='center dark space-bottom1'>
@@ -444,6 +472,8 @@ var Editor = React.createClass({
       price: 0
     };
   },
+  // Before this view is displayed, we make sure that the node it'll
+  // show will be loaded soon.
   statics: {
     willTransitionTo(transition, params) {
       nodeStore.loadNodes([params.osmId]);
