@@ -16,10 +16,18 @@ ES6 that uses 6to5 to make the code run everywhere.
 
 The code structure is simple: **all JavaScript is in index.js**.
 
-```
-npm install
-npm start
-```
+## Development
+
+This project uses [browserify](http://browserify.org/) to compile
+the source code in `index.js` into the bundle of JavaScript in `bundle.js`
+that your browser interprets. You'll need [node.js](http://nodejs.org/)
+to install the dependencies of this project and develop on it.
+
+* `npm install`: install dependencies
+* `npm start`: start the development server that compiles your JavaScript and
+  serves the site at http://localhost:3000/
+* `npm run build`: build a production-ready `bundle.js` that you can commit
+  and use on the public website.
 
 ## See Also
 
