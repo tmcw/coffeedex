@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>index.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>index.js</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> React = <span class="hljs-built_in">require</span>(<span class="hljs-string">'react/addons'</span>),
+  Reflux = <span class="hljs-built_in">require</span>(<span class="hljs-string">'reflux'</span>),
+  Router = <span class="hljs-built_in">require</span>(<span class="hljs-string">'react-router'</span>),
+  { NotFoundRoute, Navigation, State, Link, Route, RouteHandler, DefaultRoute } = Router,
+  osmAuth = <span class="hljs-built_in">require</span>(<span class="hljs-string">'osm-auth'</span>),
+  haversine = <span class="hljs-built_in">require</span>(<span class="hljs-string">'haversine'</span>),
+  xhr = <span class="hljs-built_in">require</span>(<span class="hljs-string">'xhr'</span>),
+  currency = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./currency_symbols.json'</span>),
+  qs = <span class="hljs-built_in">require</span>(<span class="hljs-string">'querystring'</span>);
+
+<span class="hljs-built_in">window</span>.React = React;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>Constants for API endpoints</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">const</span> API06 = <span class="hljs-string">'http://api.openstreetmap.org/api/0.6/'</span>,
+  OVERPASS = <span class="hljs-string">'http://overpass-api.de/api/interpreter'</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>Constants for our OAuth connection to OpenStreetMap.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">const</span> OAUTH_CONSUMER_KEY = <span class="hljs-string">'VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw'</span>,
+  OAUTH_SECRET = <span class="hljs-string">'ugrQJAmn1zgdn73rn9tKCRl6JQHaZkcen2z3JpAb'</span>;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <h1 id="configuration">Configuration</h1>
+<p>This is used to show certain nodes in the list: otherwise the ones
+we’re looking for would be crowded out by telephone poles etc.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">const</span> KEYPAIR = { k: <span class="hljs-string">'amenity'</span>, v: <span class="hljs-string">'cafe'</span> },
+  TAG = <span class="hljs-string">'cost:coffee'</span>,</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>The version string is added to changesets to let OSM know which
+editor software is responsible for which changes.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  VERSION = <span class="hljs-string">'COFFEEDEX 2002'</span>,
+  MBX = <span class="hljs-string">'pk.eyJ1IjoidG1jdyIsImEiOiIzczJRVGdRIn0.DKkDbTPnNUgHqTDBg7_zRQ'</span>,
+  MAP = <span class="hljs-string">'tmcw.kbh273ee'</span>,
+  PIN = <span class="hljs-string">'pin-l-cafe'</span>,
+  LOC = <span class="hljs-string">'pin-s'</span>;
+
+L.mapbox.accessToken = MBX;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <h1 id="parsing-producing-xml">Parsing &amp; Producing XML</h1>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> a = (nl) =&gt; <span class="hljs-built_in">Array</span>.prototype.slice.call(nl),
+  attr = (n, k) =&gt; n.getAttribute(k),
+  serializer = <span class="hljs-keyword">new</span> XMLSerializer();</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>Given an XML DOM in OSM format and an object of the form</p>
+<pre><code>{ k, v }
+</code></pre><p>Find all nodes with that key combination and return them
+in the form</p>
+<pre><code>{ xml: Node, tags: {}, id: <span class="hljs-string">'osm-id'</span> }
+</code></pre>
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> parser = (xml, kv) =&gt;
+  a(xml.getElementsByTagName(<span class="hljs-string">'node'</span>)).map(node =&gt;
+    a(node.getElementsByTagName(<span class="hljs-string">'tag'</span>)).reduce((memo, tag) =&gt; {
+      memo.tags[attr(tag, <span class="hljs-string">'k'</span>)] = attr(tag, <span class="hljs-string">'v'</span>); <span class="hljs-keyword">return</span> memo;
+    }, {
+      xml: node, tags: {}, id: attr(node, <span class="hljs-string">'id'</span>),
+      location: {
+        latitude: <span class="hljs-built_in">parseFloat</span>(attr(node, <span class="hljs-string">'lat'</span>)),
+        longitude: <span class="hljs-built_in">parseFloat</span>(attr(node, <span class="hljs-string">'lon'</span>))
+      }
+    }))
+    .filter(node =&gt; node.tags[kv.k] === kv.v);
+<span class="hljs-keyword">var</span> serialize = (xml) =&gt; serializer.serializeToString(xml)
+  .replace(<span class="hljs-string">'xmlns="http://www.w3.org/1999/xhtml"'</span>, <span class="hljs-string">''</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>Since we’re building XML the hacky way by formatting strings,
+we’ll need to escape strings so that places like “Charlie’s Shop”
+don’t make invalid XML.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> <span class="hljs-built_in">escape</span> = _ =&gt; _.replace(<span class="hljs-regexp">/&amp;/g</span>, <span class="hljs-string">'&amp;amp;'</span>)
+  .replace(<span class="hljs-regexp">/&lt;/g</span>, <span class="hljs-string">'&amp;lt;'</span>).replace(<span class="hljs-regexp">/&gt;/g</span>, <span class="hljs-string">'&amp;gt;'</span>).replace(<span class="hljs-regexp">/"/g</span>, <span class="hljs-string">'&amp;quot;'</span>);</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>Generate the XML payload necessary to open a new changeset in OSM</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> changesetCreate = (comment) =&gt; `&lt;osm&gt;<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">changeset</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-title">tag</span> <span class="hljs-attribute">k</span>=<span class="hljs-value">"created_by"</span> <span class="hljs-attribute">v</span>=<span class="hljs-value">"${VERSION}"</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-title">tag</span> <span class="hljs-attribute">k</span>=<span class="hljs-value">"comment"</span> <span class="hljs-attribute">v</span>=<span class="hljs-value">"${escape(comment)}"</span> /&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-title">changeset</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">osm</span>&gt;</span>`;
+</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>After the OSM changeset is opened, we need to send the changes:
+this generates the necessary XML to add or update a specific
+tag on a single node.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> changesetChange = (node, tag, id) =&gt; {
+  a(node.getElementsByTagName(<span class="hljs-string">'tag'</span>))
+    .filter(tagElem =&gt; tagElem.getAttribute(<span class="hljs-string">'k'</span>) === tag.k)
+    .forEach(tagElem =&gt;  node.removeChild(tagElem));
+  node.setAttribute(<span class="hljs-string">'changeset'</span>, id);
+  <span class="hljs-keyword">var</span> newTag = node.appendChild(<span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">'tag'</span>));
+  newTag.setAttribute(<span class="hljs-string">'k'</span>, tag.k); newTag.setAttribute(<span class="hljs-string">'v'</span>, tag.v);
+  <span class="hljs-keyword">return</span> `&lt;osmChange version=<span class="hljs-string">"0.3"</span> generator=<span class="hljs-string">"${VERSION}"</span>&gt;
+    <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">modify</span>&gt;</span>${serialize(node)}<span class="hljs-tag">&lt;/<span class="hljs-title">modify</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-title">osmChange</span>&gt;</span>`;
+};
+var sortDistance = (location) =&gt;
+  (a, b) =&gt; haversine(location, a.location) - haversine(location, b.location);
+var queryOverpass = (center, kv, callback) =&gt; {
+  const RADIUS = 0.1;
+  var bbox = [
+    center.latitude - RADIUS, center.longitude - RADIUS,
+    center.latitude + RADIUS, center.longitude + RADIUS
+  ].join(',');
+  var query = `[out:xml][timeout:25];
+  (node["${kv.k}"="${kv.v}"](${bbox});); out body; &gt;;</span> out skel qt;`;
+  xhr({ uri: OVERPASS, method: <span class="hljs-string">'POST'</span>, body: query }, callback);
+};
+<span class="hljs-keyword">var</span> queryOverpassAll = (callback) =&gt; {
+  <span class="hljs-keyword">var</span> query = `[out:json][timeout:<span class="hljs-number">1000</span>];(node[<span class="hljs-string">"cost:coffee"</span>];);out body; &gt;; out skel qt;`;
+  xhr({ uri: OVERPASS, method: <span class="hljs-string">'POST'</span>, body: query }, callback);
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <h1 id="stores">Stores</h1>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> locationStore = Reflux.createStore({
+  location: { latitude: <span class="hljs-number">0</span>, longitude: <span class="hljs-number">0</span> },
+  getInitialState() { <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.location; },
+  init() {
+    <span class="hljs-keyword">this</span>.watcher = navigator.geolocation.watchPosition(res =&gt; {
+      <span class="hljs-keyword">if</span> (haversine(<span class="hljs-keyword">this</span>.location, res.coords) &gt; <span class="hljs-number">10</span>) {
+        <span class="hljs-keyword">this</span>.trigger(res.coords);
+      }
+      <span class="hljs-keyword">this</span>.location = res.coords;
+    });
+  }
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>The worldNode store stores only data for the WorldMap component:
+instead of loading a list with <a href="http://wiki.openstreetmap.org/wiki/Overpass_API">Overpass API</a>
+and detail with API 0.6, this simply hits Overpass, and uses the easy-to-parse JSON output
+instead of XML.</p>
+<p>We then transform Overpass’s JSON encoding into <a href="http://geojson.org/">GeoJSON</a>
+so Mapbox.js can display the points.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> worldNodeLoad = Reflux.createAction();
+<span class="hljs-keyword">var</span> worldNodeStore = Reflux.createStore({
+  nodes: <span class="hljs-literal">null</span>,
+  getInitialState() { <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.nodes; },
+  init() { <span class="hljs-keyword">this</span>.listenTo(worldNodeLoad, <span class="hljs-keyword">this</span>.load); },
+  load() {
+    queryOverpassAll((err, resp, json) =&gt; {
+      <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">return</span> <span class="hljs-built_in">console</span>.error(err);
+      <span class="hljs-keyword">this</span>.nodes = {
+        type: <span class="hljs-string">'FeatureCollection'</span>,
+        features: <span class="hljs-built_in">JSON</span>.parse(json).elements.map((elem) =&gt; {
+          elem.tags.title = elem.tags.name || <span class="hljs-string">''</span>;
+          elem.tags.description = elem.tags[TAG];
+          elem.tags[<span class="hljs-string">'marker-symbol'</span>] = <span class="hljs-string">'cafe'</span>;
+          elem.tags[<span class="hljs-string">'marker-color'</span>] = <span class="hljs-string">'#5a3410'</span>;
+          <span class="hljs-keyword">return</span> {
+            type: <span class="hljs-string">'Feature'</span>,
+            properties: elem.tags,
+            geometry: { type: <span class="hljs-string">'Point'</span>, coordinates: [elem.lon, elem.lat]  }
+          };
+        })
+      };
+      <span class="hljs-keyword">this</span>.trigger(<span class="hljs-keyword">this</span>.nodes);
+    });
+  }
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>Here’s where we store fully-formed OSM Nodes that correspond to matches.
+These are listed with Overpass and then loaded in full with OSM API.
+This two-step process imitates the ability to filter the OSM API - without
+it, we’d have some very slow calls to the <code>/map/</code> endpoint, instead of
+fast calls to the <code>/nodes</code> endpoint.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> nodeLoad = Reflux.createAction();
+<span class="hljs-keyword">var</span> nodeSave = Reflux.createAction();
+<span class="hljs-keyword">var</span> nodeStore = Reflux.createStore({
+  nodes: {},
+  getInitialState() { <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.nodes; },
+  init() {
+    <span class="hljs-keyword">this</span>.listenTo(nodeLoad, <span class="hljs-keyword">this</span>.load);
+    <span class="hljs-keyword">this</span>.listenTo(locationStore, <span class="hljs-keyword">this</span>.load);
+    <span class="hljs-keyword">this</span>.listenTo(nodeSave, <span class="hljs-keyword">this</span>.save);
+  },
+  load(center) {
+    queryOverpass(center, KEYPAIR, (err, resp, map) =&gt; {
+      <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">return</span> <span class="hljs-built_in">console</span>.error(err);
+      parser(resp.responseXML, KEYPAIR)
+        .sort(sortDistance(center))
+        .slice(<span class="hljs-number">0</span>, <span class="hljs-number">50</span>)
+        .map(node =&gt; node.id).forEach(id =&gt; <span class="hljs-keyword">this</span>.loadNodes([id]));
+    });
+  },
+  loadNodes(ids) {
+    ids = ids.filter(id =&gt; !<span class="hljs-keyword">this</span>.nodes[id]);
+    <span class="hljs-keyword">if</span> (!ids.length) <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.trigger(<span class="hljs-keyword">this</span>.nodes);
+    xhr({ uri: `${API06}nodes/?nodes=${ids.join(<span class="hljs-string">','</span>)}`, method: <span class="hljs-string">'GET'</span> }, (err, resp, body) =&gt; {
+      parser(resp.responseXML, KEYPAIR).forEach(node =&gt; {
+        <span class="hljs-keyword">if</span> (!<span class="hljs-keyword">this</span>.nodes[node.id]) <span class="hljs-keyword">this</span>.nodes[node.id] = node;
+      });
+      <span class="hljs-keyword">this</span>.trigger(<span class="hljs-keyword">this</span>.nodes);
+    });
+  },
+  save(res, price, currency) {
+    <span class="hljs-keyword">const</span> XMLHEADER = { header: { <span class="hljs-string">'Content-Type'</span>: <span class="hljs-string">'text/xml'</span> } };
+    <span class="hljs-keyword">var</span> xml = res.xml;
+    <span class="hljs-keyword">var</span> tag = { k: TAG, v: currency + price };
+    <span class="hljs-keyword">var</span> comment = `Updating coffee price to ${currency} ${price} <span class="hljs-keyword">for</span> ${res.tags.name}`;
+    auth.xhr({ method: <span class="hljs-string">'PUT'</span>, prefix: <span class="hljs-literal">false</span>, options: XMLHEADER,
+      content: changesetCreate(comment),
+      path: `${API06}changeset/create`
+    }, (err, id) =&gt; {
+      <span class="hljs-keyword">if</span> (err) <span class="hljs-keyword">return</span> <span class="hljs-built_in">console</span>.error(err);
+      auth.xhr({ method: <span class="hljs-string">'POST'</span>, prefix: <span class="hljs-literal">false</span>, options: XMLHEADER,
+        content: changesetChange(xml, tag, id),
+        path: `${API06}changeset/${id}/upload`,
+      }, (err, res) =&gt; {
+        auth.xhr({ method: <span class="hljs-string">'PUT'</span>, prefix: <span class="hljs-literal">false</span>,
+          path: `${API06}changeset/${id}/close`
+        }, (err, id) =&gt; {
+            <span class="hljs-keyword">if</span> (err) <span class="hljs-built_in">console</span>.error(err);
+            router.transitionTo(<span class="hljs-string">'/success'</span>);
+        });
+      });
+    });
+  }
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>osm-auth does the hard work of managing user authentication with
+OpenStreetMap via the OAuth protocol.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> auth = osmAuth({
+  oauth_consumer_key: OAUTH_CONSUMER_KEY,
+  oauth_secret: OAUTH_SECRET,
+  auto: <span class="hljs-literal">false</span>,
+  landing: <span class="hljs-string">'index.html'</span>,
+  singlepage: <span class="hljs-literal">true</span>
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>Here we store the user’s logged-in / logged-out status so we can show
+the authentication view instead of a list as an initial pageview.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> userLogin = Reflux.createAction();
+<span class="hljs-keyword">var</span> userStore = Reflux.createStore({
+  user: <span class="hljs-literal">null</span>,
+  init() {
+    <span class="hljs-keyword">this</span>.user = auth.authenticated();
+    <span class="hljs-keyword">this</span>.listenTo(userLogin, <span class="hljs-keyword">this</span>.login);
+  },
+  getInitialState() {
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.user;
+  },
+  login() {
+    auth.authenticate((err, details) =&gt; {
+      <span class="hljs-keyword">this</span>.user = auth.authenticated();
+      <span class="hljs-keyword">this</span>.trigger(<span class="hljs-keyword">this</span>.user);
+    });
+  }
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <h1 id="components">Components</h1>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p>A simple shout-out and log-in button that shoots a user into the OSM
+oauth flow.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> LogIn = React.createClass({
+  render() {
+    <span class="hljs-comment">/* jshint ignore:start */</span>
+    <span class="hljs-keyword">return</span> (<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pad2'</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pad1 space-bottom1'</span>&gt;</span>
+          COFFEEDEX is built on OpenStreetMap and requires an OpenStreetMap account.
+        <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-title">button</span>
+          <span class="hljs-attribute">onClick</span>=<span class="hljs-value">{userLogin}</span>
+          <span class="hljs-attribute">className</span>=<span class="hljs-value">'button col12 fill-green icon account'</span>&gt;</span>Log in to OpenStreetMap<span class="hljs-tag">&lt;/<span class="hljs-title">button</span>&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+    );
+    /* jshint ignore:end */
+  }
+});
+
+</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>A simple wrapper for a call to the <a href="https://www.mapbox.com/developers/api/static/">Mapbox Static Map API</a>
+that we use for editing pages: this gives a basic idea of where the coffee
+shop is as well as a marker for your location. Helpful when there’s
+a Starbucks on every corner of an intersection.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> StaticMap = React.createClass({
+  render() {
+    <span class="hljs-keyword">return</span> (
+      <span class="hljs-comment">/* jshint ignore:start */</span>
+      &lt;img src={`https:<span class="hljs-comment">//api.tiles.mapbox.com/v4/${MAP}/` +</span>
+        `${PIN}(${<span class="hljs-keyword">this</span>.props.location.longitude},${<span class="hljs-keyword">this</span>.props.location.latitude}),` +
+        (<span class="hljs-keyword">this</span>.props.self ? `${LOC}(${<span class="hljs-keyword">this</span>.props.self.longitude},${<span class="hljs-keyword">this</span>.props.self.latitude})` : <span class="hljs-string">''</span>) +
+        `/${<span class="hljs-keyword">this</span>.props.location.longitude},${<span class="hljs-keyword">this</span>.props.location.latitude}` +
+        `,<span class="hljs-number">14</span>/<span class="hljs-number">300</span>x200@<span class="hljs-number">2</span>x.png?access_token=${MBX}`} /&gt;
+      <span class="hljs-comment">/* jshint ignore:end */</span>
+    );
+  }
+});
+
+<span class="hljs-keyword">var</span> Page = React.createClass({
+  render() {
+    <span class="hljs-keyword">return</span> (
+      <span class="hljs-comment">/* jshint ignore:start */</span>
+      &lt;div className=<span class="hljs-string">'margin3 col6'</span>&gt;
+        <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'col12'</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">RouteHandler</span>/&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+      /* jshint ignore:end */
+    );
+  }
+});
+
+var values = obj =&gt; Object.keys(obj).map(key =&gt; obj[key]);
+
+</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>A list of potential nodes for viewing and editing.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> List = React.createClass({</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>We use Reflux’s <code>.connect</code> method to listen for changes in stores
+and automatically call setState to use their data here.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  mixins: [
+    Reflux.connect(nodeStore, <span class="hljs-string">'nodes'</span>),
+    Reflux.connect(locationStore, <span class="hljs-string">'location'</span>),
+    Reflux.connect(userStore, <span class="hljs-string">'user'</span>)],
+  <span class="hljs-comment">/* jshint ignore:start */</span>
+  render() {
+    <span class="hljs-keyword">return</span> (
+    <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'clearfix col12'</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pad2 fill-darken0 clearfix'</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'col4'</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-title">img</span> <span class="hljs-attribute">width</span>=<span class="hljs-value">{300</span>/<span class="hljs-attribute">2</span>} <span class="hljs-attribute">height</span>=<span class="hljs-value">{230</span>/<span class="hljs-attribute">2</span>}
+              <span class="hljs-attribute">className</span>=<span class="hljs-value">'inline'</span> <span class="hljs-attribute">src</span>=<span class="hljs-value">'assets/logo_inverted.png'</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'col8 pad2y pad1x'</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-title">h3</span>&gt;</span>COFFEEDEX<span class="hljs-tag">&lt;/<span class="hljs-title">h3</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-title">p</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'italic'</span>&gt;</span>how much does a cup of coffee for here cost, everywhere?<span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+      {this.state.user ?
+        <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pad2'</span>&gt;</span>
+          {!values(this.state.nodes).length &amp;&amp; <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pad4 center'</span>&gt;</span>
+            Loading...
+          <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>}
+          <span class="hljs-tag">&lt;<span class="hljs-title">React.addons.CSSTransitionGroup</span> <span class="hljs-attribute">transitionName</span>=<span class="hljs-value">"t-fade"</span>&gt;</span>
+          {values(this.state.nodes)
+            .sort(sortDistance(this.state.location))
+            .map(res =&gt; <span class="hljs-tag">&lt;<span class="hljs-title">Result</span> <span class="hljs-attribute">key</span>=<span class="hljs-value">{res.id}</span> <span class="hljs-attribute">res</span>=<span class="hljs-value">{res}</span> /&gt;</span>)}
+          <span class="hljs-tag">&lt;/<span class="hljs-title">React.addons.CSSTransitionGroup</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span> :
+      <span class="hljs-tag">&lt;<span class="hljs-title">LogIn</span> /&gt;</span>}
+      <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'center dark space-bottom1'</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pill space-top1'</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">Link</span>
+            <span class="hljs-attribute">className</span>=<span class="hljs-value">'button stroke quiet icon globe'</span>
+            <span class="hljs-attribute">to</span>=<span class="hljs-value">'world_map'</span>&gt;</span>World Map<span class="hljs-tag">&lt;/<span class="hljs-title">Link</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">Link</span>
+            <span class="hljs-attribute">className</span>=<span class="hljs-value">'button stroke quiet'</span>
+            <span class="hljs-attribute">to</span>=<span class="hljs-value">'help'</span>&gt;</span>Help<span class="hljs-tag">&lt;/<span class="hljs-title">Link</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>);
+  }
+  /* jshint ignore:end */
+});
+
+</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <p>A single list item</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> Result = React.createClass({
+  render() {
+    <span class="hljs-comment">/* jshint ignore:start */</span>
+    <span class="hljs-keyword">return</span> <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">Link</span> <span class="hljs-attribute">to</span>=<span class="hljs-value">'editor'</span>
+      <span class="hljs-attribute">params</span>=<span class="hljs-value">{{</span> <span class="hljs-attribute">osmId:</span> <span class="hljs-attribute">this.props.res.id</span> }}
+      <span class="hljs-attribute">className</span>=<span class="hljs-value">'pad1 col12 clearfix fill-coffee space-bottom1'</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'price-tag round'</span>&gt;</span>
+        {this.props.res.tags[TAG] ?
+          this.props.res.tags[TAG] : <span class="hljs-tag">&lt;<span class="hljs-title">span</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'icon pencil'</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">span</span>&gt;</span>}
+      <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">strong</span>&gt;</span>{this.props.res.tags.name}<span class="hljs-tag">&lt;/<span class="hljs-title">strong</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-title">Link</span>&gt;</span>;</span>
+    <span class="hljs-comment">/* jshint ignore:end */</span>
+  }
+});
+
+<span class="hljs-keyword">var</span> parseCurrency = str =&gt; {
+  <span class="hljs-keyword">var</span> number = str.match(<span class="hljs-regexp">/[\d\.]+/</span>), currency = str.match(<span class="hljs-regexp">/[^\d\.]+/</span>);
+  <span class="hljs-keyword">return</span> {
+    currency: currency || <span class="hljs-string">'$'</span>,
+    price: <span class="hljs-built_in">parseFloat</span>((number &amp;&amp; number[<span class="hljs-number">0</span>]) || <span class="hljs-number">0</span>)
+  };
+};</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>This view is shown briefly after a user completes an edit. The user
+can either click/tap to go back to the list, or it’ll do that automatically
+in 1 second.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> Success = React.createClass({
+  mixins: [Navigation],
+  componentDidMount() {
+    setTimeout(() =&gt; {
+      <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.isMounted()) {
+        <span class="hljs-keyword">this</span>.transitionTo(<span class="hljs-string">'list'</span>);
+      }
+    }, <span class="hljs-number">1000</span>);
+  },
+  <span class="hljs-comment">/* jshint ignore:start */</span>
+  render() {
+    <span class="hljs-keyword">return</span> <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">Link</span> <span class="hljs-attribute">to</span>=<span class="hljs-value">'list'</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'col12 center pad4'</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">h2</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">span</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'big icon check'</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">span</span>&gt;</span> Saved!<span class="hljs-tag">&lt;/<span class="hljs-title">h2</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-title">Link</span>&gt;</span>;</span>
+  }
+  <span class="hljs-comment">/* jshint ignore:end */</span>
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <p>The help page. Doesn’t have any JavaScript functionality of its own -
+this is static content.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> Help = React.createClass({
+  <span class="hljs-comment">/* jshint ignore:start */</span>
+  render() {
+    <span class="hljs-keyword">return</span> <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">Link</span>
+        <span class="hljs-attribute">to</span>=<span class="hljs-value">'list'</span>
+        <span class="hljs-attribute">className</span>=<span class="hljs-value">'home icon button fill-darken2 col12'</span>&gt;</span>home<span class="hljs-tag">&lt;/<span class="hljs-title">Link</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pad1y'</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'round fill-lighten0 pad2 dark'</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">p</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">strong</span>&gt;</span>COFFEEDEX<span class="hljs-tag">&lt;/<span class="hljs-title">strong</span>&gt;</span> is a community project that aims to track the price of house coffee everywhere.<span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">p</span>&gt;</span>The data is stored in <span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">'http://osm.org/'</span>&gt;</span>OpenStreetMap<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span>, a free and open source map of the world, as tags on existing coffeehops. There are 150,000+.<span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">p</span>&gt;</span>Maps in this application are &amp;copy; <span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">'http://mapbox.com/'</span>&gt;</span>Mapbox<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span>.<span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">p</span>&gt;</span>COFFEEDEX data stored in OpenStreetMap is <span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">'http://www.openstreetmap.org/copyright'</span>&gt;</span>available under the ODbL license.<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">p</span>&gt;</span>This is also an open source project. You can view the source code, clone it, fork it, and make new things with it as inspiration or raw parts.<span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'button stroke icon github col12 space-bottom1'</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">'http://github.com/tmcw/coffeedex'</span>&gt;</span>COFFEEDEX on GitHub<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">p</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">span</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'icon mobile'</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">span</span>&gt;</span> COFFEEDEX also works great on phones! Try it on your phone and add it to your iPhone home screen - it'll look even prettier.<span class="hljs-tag">&lt;/<span class="hljs-title">p</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">h2</span>&gt;</span>FAQ<span class="hljs-tag">&lt;/<span class="hljs-title">h2</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">ul</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-title">li</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-title">strong</span>&gt;</span>Which coffee?<span class="hljs-tag">&lt;/<span class="hljs-title">strong</span>&gt;</span> This site tracks the price of <span class="hljs-tag">&lt;<span class="hljs-title">em</span>&gt;</span>house coffee<span class="hljs-tag">&lt;/<span class="hljs-title">em</span>&gt;</span> for here. In many cases, that means a 12oz drip, but if all coffees are pour-overs or your country uses different standard size, the overriding rule is cheapest-here.<span class="hljs-tag">&lt;/<span class="hljs-title">li</span>&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-title">ul</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>;</span>
+  }
+  <span class="hljs-comment">/* jshint ignore:end */</span>
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-24">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-24">&#182;</a>
+              </div>
+              <p>The WorldMap page. This uses the worldNodeLoad to show all tagged
+nodes worldwide on an interactive Mapbox map.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> WorldMap = React.createClass({
+  mixins: [Navigation, Reflux.connect(worldNodeStore, <span class="hljs-string">'nodes'</span>)],
+  statics: {
+    willTransitionTo(transition, params) {
+      worldNodeLoad();
+    }
+  },
+  <span class="hljs-comment">/* jshint ignore:start */</span>
+  componentDidMount() {
+    <span class="hljs-keyword">this</span>.map = L.mapbox.map(<span class="hljs-keyword">this</span>.refs.map.getDOMNode(), MAP, {
+      zoomControl: <span class="hljs-literal">false</span>
+    });
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.state.nodes) <span class="hljs-keyword">this</span>.map.featureLayer.setGeoJSON(<span class="hljs-keyword">this</span>.state.nodes);
+  },
+  componentDidUpdate() {
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>.state.nodes) <span class="hljs-keyword">this</span>.map.featureLayer.setGeoJSON(<span class="hljs-keyword">this</span>.state.nodes);
+  },
+  render() {
+    <span class="hljs-keyword">return</span> <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">ref</span>=<span class="hljs-value">'map'</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pin-top pin-bottom'</span> <span class="hljs-attribute">id</span>=<span class="hljs-value">'map'</span>&gt;</span><span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">Link</span>
+        <span class="hljs-attribute">to</span>=<span class="hljs-value">'list'</span>
+        <span class="hljs-attribute">className</span>=<span class="hljs-value">'home icon button fill-navy dark pin-top unround col12'</span>&gt;</span>home<span class="hljs-tag">&lt;/<span class="hljs-title">Link</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>;</span>
+  }
+  <span class="hljs-comment">/* jshint ignore:end */</span>
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-25">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-25">&#182;</a>
+              </div>
+              <p>The editor. This allows users to view and edit tags on single result items.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> Editor = React.createClass({
+  mixins: [
+    Reflux.listenTo(nodeStore, <span class="hljs-string">'onNodeLoad'</span>, <span class="hljs-string">'onNodeLoad'</span>),
+    Reflux.connect(locationStore, <span class="hljs-string">'location'</span>),
+    State, React.addons.LinkedStateMixin],
+  onNodeLoad(nodes) {
+    <span class="hljs-keyword">var</span> node = nodes[<span class="hljs-keyword">this</span>.getParams().osmId];
+    <span class="hljs-keyword">if</span> (node) {
+      <span class="hljs-keyword">if</span> (node.tags[TAG]) {
+        <span class="hljs-keyword">var</span> currency = parseCurrency(node.tags[TAG]);
+        <span class="hljs-keyword">this</span>.setState({
+          currency: currency.currency,
+          price: currency.price,
+          node: node
+        });
+      } <span class="hljs-keyword">else</span> {
+        <span class="hljs-keyword">this</span>.setState({ node: node });
+      }
+    }
+  },
+  getInitialState() {
+    <span class="hljs-keyword">return</span> {
+      currency: <span class="hljs-string">'$'</span>,
+      price: <span class="hljs-number">0</span>
+    };
+  },</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-26">&#182;</a>
+              </div>
+              <p>Before this view is displayed, we make sure that the node it’ll
+show will be loaded soon.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  statics: {
+    willTransitionTo(transition, params) {
+      nodeStore.loadNodes([params.osmId]);
+    },
+  },
+  save(e) {
+    e.preventDefault();
+    <span class="hljs-keyword">var</span> node = <span class="hljs-keyword">this</span>.state.node;
+    nodeSave(node, <span class="hljs-keyword">this</span>.state.price, <span class="hljs-keyword">this</span>.state.currency);
+  },
+  render() {
+    <span class="hljs-keyword">var</span> node = <span class="hljs-keyword">this</span>.state.node;
+    <span class="hljs-comment">/* jshint ignore:start */</span>
+    <span class="hljs-keyword">if</span> (!node) <span class="hljs-keyword">return</span> <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pad4 center'</span>&gt;</span>
+      Loading...
+    <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>;</span>
+    <span class="hljs-keyword">return</span> <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'col12'</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">Link</span>
+        <span class="hljs-attribute">to</span>=<span class="hljs-value">'list'</span>
+        <span class="hljs-attribute">className</span>=<span class="hljs-value">'home icon button fill-darken0 unround col12'</span>&gt;</span>home<span class="hljs-tag">&lt;/<span class="hljs-title">Link</span>&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">StaticMap</span> <span class="hljs-attribute">location</span>=<span class="hljs-value">{node.location}</span> <span class="hljs-attribute">self</span>=<span class="hljs-value">{this.state.location}</span> /&gt;</span>
+      <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'pad1 col12 clearfix'</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'col12'</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'center'</span>&gt;</span>
+            how much for a cup of joe at
+          <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">h1</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'center'</span>&gt;</span>
+            {node.tags.name}
+          <span class="hljs-tag">&lt;/<span class="hljs-title">h1</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'limit-mobile'</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">div</span> <span class="hljs-attribute">className</span>=<span class="hljs-value">'col12 clearfix space-bottom1'</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-title">select</span>
+              <span class="hljs-attribute">valueLink</span>=<span class="hljs-value">{this.linkState('currency')}</span>
+              <span class="hljs-attribute">className</span>=<span class="hljs-value">'coffee-select'</span>&gt;</span>
+              {currency.map(c =&gt; <span class="hljs-tag">&lt;<span class="hljs-title">option</span> <span class="hljs-attribute">key</span>=<span class="hljs-value">{c[0]}</span> <span class="hljs-attribute">value</span>=<span class="hljs-value">{c[0]}</span>&gt;</span>{c[1]}<span class="hljs-tag">&lt;/<span class="hljs-title">option</span>&gt;</span>)}
+            <span class="hljs-tag">&lt;/<span class="hljs-title">select</span>&gt;</span>
+            <span class="hljs-tag">&lt;<span class="hljs-title">input</span> <span class="hljs-attribute">valueLink</span>=<span class="hljs-value">{this.linkState('price')}</span>
+              <span class="hljs-attribute">className</span>=<span class="hljs-value">'coffee-input'</span> <span class="hljs-attribute">type</span>=<span class="hljs-value">'number'</span> /&gt;</span>
+          <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+          <span class="hljs-tag">&lt;<span class="hljs-title">a</span> <span class="hljs-attribute">href</span>=<span class="hljs-value">'#'</span>
+            <span class="hljs-attribute">onClick</span>=<span class="hljs-value">{this.save}</span>
+          <span class="hljs-attribute">className</span>=<span class="hljs-value">'fill-darken1 button col12 icon plus pad1 unround'</span>&gt;</span>Save<span class="hljs-tag">&lt;/<span class="hljs-title">a</span>&gt;</span>
+        <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+      <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-title">div</span>&gt;</span>;</span>
+    <span class="hljs-comment">/* jshint ignore:end */</span>
+  }
+});</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-27">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-27">&#182;</a>
+              </div>
+              <p>Our router. This manages what URLs mean and where Links can go.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">var</span> routes = (
+  <span class="hljs-comment">/* jshint ignore:start */</span>
+  &lt;Route handler={Page} path=<span class="hljs-string">'/'</span>&gt;
+    <span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">DefaultRoute</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">'list'</span> <span class="hljs-attribute">handler</span>=<span class="hljs-value">{List}</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-title">Route</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">'world_map'</span> <span class="hljs-attribute">path</span>=<span class="hljs-value">'/world_map'</span> <span class="hljs-attribute">handler</span>=<span class="hljs-value">{WorldMap}</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-title">Route</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">'success'</span> <span class="hljs-attribute">path</span>=<span class="hljs-value">'/success'</span> <span class="hljs-attribute">handler</span>=<span class="hljs-value">{Success}</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-title">Route</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">'help'</span> <span class="hljs-attribute">path</span>=<span class="hljs-value">'/help'</span> <span class="hljs-attribute">handler</span>=<span class="hljs-value">{Help}</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-title">Route</span> <span class="hljs-attribute">name</span>=<span class="hljs-value">'editor'</span> <span class="hljs-attribute">path</span>=<span class="hljs-value">'/edit/:osmId'</span> <span class="hljs-attribute">handler</span>=<span class="hljs-value">{Editor}</span> /&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-title">Route</span>&gt;</span>
+  /* jshint ignore:end */
+);
+
+var router = Router.create({ routes });
+
+</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-28">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-28">&#182;</a>
+              </div>
+              <p>This is a little dirty: the router will rewrite paths it doesn’t know,
+including the path we desperately need to complete the OAuth dance.
+So before booting it up, we notice if we need to bootstrap an oauth_token,
+and if so, we do that before starting the application.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="hljs-keyword">if</span> (location.search &amp;&amp; !auth.authenticated()) {
+  <span class="hljs-keyword">var</span> oauth_token = qs.parse(location.search.replace(<span class="hljs-string">'?'</span>, <span class="hljs-string">''</span>)).oauth_token;
+  auth.bootstrapToken(oauth_token, (err, res) =&gt; {
+    userStore.user = <span class="hljs-literal">true</span>;
+    userStore.trigger(userStore.user);
+    router.run(Handler =&gt; {
+      <span class="hljs-comment">/* jshint ignore:start */</span>
+      React.render(<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-title">Handler</span>/&gt;</span>, document.body);
+      /* jshint ignore:end */
+    });
+  });
+} else {
+  router.run(Handler =&gt; {
+    /* jshint ignore:start */
+    React.render(<span class="hljs-tag">&lt;<span class="hljs-title">Handler</span>/&gt;</span>, document.body);
+    /* jshint ignore:end */
+  });
+}
+
+</span></pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
