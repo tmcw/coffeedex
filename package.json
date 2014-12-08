@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "watchify index.js -o bundle.js & serve",
-    "build": "browserify index.js > bundle.js"
+    "build": "NODE_ENV=production browserify index.js | uglifyjs -c -m > bundle.js"
   },
   "repository": {
     "type": "git",
@@ -37,12 +37,13 @@
     "osm-auth": "^0.2.7",
     "react": "^0.12.1",
     "serve": "^1.4.0",
+    "uglify-js": "^2.4.15",
     "watchify": "^2.1.1"
   },
   "dependencies": {
     "haversine": "^1.0.0",
-    "react-router": "^0.11.2",
-    "reflux": "^0.2.0",
+    "react-router": "^0.11.4",
+    "reflux": "^0.2.1",
     "xhr": "^1.17.0"
   }
 }

@@ -166,16 +166,17 @@ var nodeStore = Reflux.createStore({
   load(center) {
     queryOverpass(center, KEYPAIR, (err, resp, map) => {
       if (err) return console.error(err);
-      parser(resp.responseXML, KEYPAIR)
+      this.loadNodes(parser(resp.responseXML, KEYPAIR)
         .sort(sortDistance(center))
         .slice(0, 50)
-        .map(node => node.id).forEach(id => this.loadNodes([id]));
+        .map(n => n.id));
     });
   },
   loadNodes(ids) {
     ids = ids.filter(id => !this.nodes[id]);
     if (!ids.length) return this.trigger(this.nodes);
     xhr({ uri: `${API06}nodes/?nodes=${ids.join(',')}`, method: 'GET' }, (err, resp, body) => {
+      if (err) return console.error(err);
       parser(resp.responseXML, KEYPAIR).forEach(node => {
         if (!this.nodes[node.id]) this.nodes[node.id] = node;
       });
@@ -437,6 +438,11 @@ var WorldMap = React.createClass({
   render() {
     return <div>
       <div ref='map' className='pin-top pin-bottom' id='map'></div>
+      {this.state.nodes &&
+      <div
+        className='pin-bottom fill-navy pad0 center'>
+        <strong>{this.state.nodes.features.length}</strong> prices worldwide
+      </div>}
       <Link
         to='list'
         className='home icon button fill-navy dark pin-top unround col12'>home</Link>

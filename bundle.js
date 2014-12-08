@@ -207,11 +207,9 @@ var nodeStore = Reflux.createStore({
     var _this3 = this;
     queryOverpass(center, KEYPAIR, function (err, resp, map) {
       if (err) return console.error(err);
-      parser(resp.responseXML, KEYPAIR).sort(sortDistance(center)).slice(0, 50).map(function (node) {
-        return node.id;
-      }).forEach(function (id) {
-        return _this3.loadNodes([id]);
-      });
+      _this3.loadNodes(parser(resp.responseXML, KEYPAIR).sort(sortDistance(center)).slice(0, 50).map(function (n) {
+        return n.id;
+      }));
     });
   },
   loadNodes: function (ids) {
@@ -221,6 +219,7 @@ var nodeStore = Reflux.createStore({
     });
     if (!ids.length) return this.trigger(this.nodes);
     xhr({ uri: "" + API06 + "nodes/?nodes=" + ids.join(","), method: "GET" }, function (err, resp, body) {
+      if (err) return console.error(err);
       parser(resp.responseXML, KEYPAIR).forEach(function (node) {
         if (!_this4.nodes[node.id]) _this4.nodes[node.id] = node;
       });
@@ -489,7 +488,9 @@ var WorldMap = React.createClass({
       ref: "map",
       className: "pin-top pin-bottom",
       id: "map"
-    }), React.createElement(Link, {
+    }), this.state.nodes && React.createElement("div", {
+      className: "pin-bottom fill-navy pad0 center"
+    }, React.createElement("strong", null, this.state.nodes.features.length), " prices worldwide"), React.createElement(Link, {
       to: "list",
       className: "home icon button fill-navy dark pin-top unround col12"
     }, "home"));
@@ -5448,7 +5449,22 @@ var ImitateBrowserBehavior = {
 
 module.exports = ImitateBrowserBehavior;
 
-},{"../actions/LocationActions":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/actions/LocationActions.js"}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/DefaultRoute.js":[function(require,module,exports){
+},{"../actions/LocationActions":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/actions/LocationActions.js"}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/behaviors/ScrollToTopBehavior.js":[function(require,module,exports){
+/**
+ * A scroll behavior that always scrolls to the top of the page
+ * after a transition.
+ */
+var ScrollToTopBehavior = {
+
+  updateScrollPosition: function () {
+    window.scrollTo(0, 0);
+  }
+
+};
+
+module.exports = ScrollToTopBehavior;
+
+},{}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/DefaultRoute.js":[function(require,module,exports){
 var React = require('react');
 var FakeNode = require('../mixins/FakeNode');
 var PropTypes = require('../utils/PropTypes');
@@ -5769,13 +5785,16 @@ exports.HashLocation = require('./locations/HashLocation');
 exports.HistoryLocation = require('./locations/HistoryLocation');
 exports.RefreshLocation = require('./locations/RefreshLocation');
 
+exports.ImitateBrowserBehavior = require('./behaviors/ImitateBrowserBehavior');
+exports.ScrollToTopBehavior = require('./behaviors/ScrollToTopBehavior');
+
 exports.Navigation = require('./mixins/Navigation');
 exports.State = require('./mixins/State');
 
 exports.create = require('./utils/createRouter');
 exports.run = require('./utils/runRouter');
 
-},{"./components/DefaultRoute":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/DefaultRoute.js","./components/Link":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/Link.js","./components/NotFoundRoute":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/NotFoundRoute.js","./components/Redirect":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/Redirect.js","./components/Route":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/Route.js","./components/RouteHandler":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/RouteHandler.js","./locations/HashLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HashLocation.js","./locations/HistoryLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HistoryLocation.js","./locations/RefreshLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/RefreshLocation.js","./mixins/Navigation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/Navigation.js","./mixins/State":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/State.js","./utils/createRouter":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/createRouter.js","./utils/runRouter":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/runRouter.js"}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HashLocation.js":[function(require,module,exports){
+},{"./behaviors/ImitateBrowserBehavior":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/behaviors/ImitateBrowserBehavior.js","./behaviors/ScrollToTopBehavior":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/behaviors/ScrollToTopBehavior.js","./components/DefaultRoute":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/DefaultRoute.js","./components/Link":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/Link.js","./components/NotFoundRoute":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/NotFoundRoute.js","./components/Redirect":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/Redirect.js","./components/Route":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/Route.js","./components/RouteHandler":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/RouteHandler.js","./locations/HashLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HashLocation.js","./locations/HistoryLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HistoryLocation.js","./locations/RefreshLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/RefreshLocation.js","./mixins/Navigation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/Navigation.js","./mixins/State":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/State.js","./utils/createRouter":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/createRouter.js","./utils/runRouter":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/runRouter.js"}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HashLocation.js":[function(require,module,exports){
 var invariant = require('react/lib/invariant');
 var canUseDOM = require('react/lib/ExecutionEnvironment').canUseDOM;
 var LocationActions = require('../actions/LocationActions');
@@ -6124,50 +6143,78 @@ var invariant = require('react/lib/invariant');
 var canUseDOM = require('react/lib/ExecutionEnvironment').canUseDOM;
 var getWindowScrollPosition = require('../utils/getWindowScrollPosition');
 
+function shouldUpdateScroll(state, prevState) {
+  if (!prevState)
+    return true;
+
+  // Don't update scroll position when only the query has changed.
+  if (state.pathname === prevState.pathname)
+    return false;
+
+  var routes = state.routes;
+  var prevRoutes = prevState.routes;
+
+  var sharedAncestorRoutes = routes.filter(function (route) {
+    return prevRoutes.indexOf(route) !== -1;
+  });
+
+  return !sharedAncestorRoutes.some(function (route) {
+    return route.ignoreScrollBehavior;
+  });
+}
+
 /**
  * Provides the router with the ability to manage window scroll position
  * according to its scroll behavior.
  */
 var Scrolling = {
 
+  statics: {
+    /**
+     * Records curent scroll position as the last known position for the given URL path.
+     */
+    recordScrollPosition: function (path) {
+      if (!this.scrollHistory)
+        this.scrollHistory = {};
+
+      this.scrollHistory[path] = getWindowScrollPosition();
+    },
+
+    /**
+     * Returns the last known scroll position for the given URL path.
+     */
+    getScrollPosition: function (path) {
+      if (!this.scrollHistory)
+        this.scrollHistory = {};
+
+      return this.scrollHistory[path] || null;
+    }
+  },
+
   componentWillMount: function () {
     invariant(
       this.getScrollBehavior() == null || canUseDOM,
       'Cannot use scroll behavior without a DOM'
     );
-
-    this._scrollHistory = {};
   },
 
   componentDidMount: function () {
     this._updateScroll();
   },
 
-  componentWillUpdate: function () {
-    this._scrollHistory[this.state.path] = getWindowScrollPosition();
+  componentDidUpdate: function (prevProps, prevState) {
+    this._updateScroll(prevState);
   },
 
-  componentDidUpdate: function () {
-    this._updateScroll();
-  },
+  _updateScroll: function (prevState) {
+    if (!shouldUpdateScroll(this.state, prevState))
+      return;
 
-  componentWillUnmount: function () {
-    delete this._scrollHistory;
-  },
-
-  /**
-   * Returns the last known scroll position for the given URL path.
-   */
-  getScrollPosition: function (path) {
-    return this._scrollHistory[path] || null;
-  },
-
-  _updateScroll: function () {
     var scrollBehavior = this.getScrollBehavior();
 
     if (scrollBehavior)
       scrollBehavior.updateScrollPosition(
-        this.getScrollPosition(this.state.path),
+        this.constructor.getScrollPosition(this.state.path),
         this.state.action
       );
   }
@@ -6202,6 +6249,7 @@ var State = {
   contextTypes: {
     getCurrentPath: React.PropTypes.func.isRequired,
     getCurrentRoutes: React.PropTypes.func.isRequired,
+    getCurrentPathname: React.PropTypes.func.isRequired,
     getCurrentParams: React.PropTypes.func.isRequired,
     getCurrentQuery: React.PropTypes.func.isRequired,
     isActive: React.PropTypes.func.isRequired
@@ -6219,6 +6267,13 @@ var State = {
    */
   getRoutes: function () {
     return this.context.getCurrentRoutes();
+  },
+
+  /**
+   * Returns the current URL path without the query string.
+   */
+  getPathname: function () {
+    return this.context.getCurrentPathname();
   },
 
   /**
@@ -6294,6 +6349,13 @@ var StateContext = {
   },
 
   /**
+   * Returns the current URL path without the query string.
+   */
+  getCurrentPathname: function () {
+    return this.state.pathname;
+  },
+
+  /**
    * Returns a read-only object of the currently active URL parameters.
    */
   getCurrentParams: function () {
@@ -6322,6 +6384,7 @@ var StateContext = {
   childContextTypes: {
     getCurrentPath: React.PropTypes.func.isRequired,
     getCurrentRoutes: React.PropTypes.func.isRequired,
+    getCurrentPathname: React.PropTypes.func.isRequired,
     getCurrentParams: React.PropTypes.func.isRequired,
     getCurrentQuery: React.PropTypes.func.isRequired,
     isActive: React.PropTypes.func.isRequired
@@ -6331,6 +6394,7 @@ var StateContext = {
     return {
       getCurrentPath: this.getCurrentPath,
       getCurrentRoutes: this.getCurrentRoutes,
+      getCurrentPathname: this.getCurrentPathname,
       getCurrentParams: this.getCurrentParams,
       getCurrentQuery: this.getCurrentQuery,
       isActive: this.isActive
@@ -6341,7 +6405,16 @@ var StateContext = {
 
 module.exports = StateContext;
 
-},{"../utils/Path":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Path.js","react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js","react/lib/Object.assign":"/Users/tmcw/src/coffeedex/node_modules/react/lib/Object.assign.js"}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Path.js":[function(require,module,exports){
+},{"../utils/Path":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Path.js","react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js","react/lib/Object.assign":"/Users/tmcw/src/coffeedex/node_modules/react/lib/Object.assign.js"}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Cancellation.js":[function(require,module,exports){
+/**
+ * Represents a cancellation caused by navigating away
+ * before the previous transition has fully resolved.
+ */
+function Cancellation() { }
+
+module.exports = Cancellation;
+
+},{}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Path.js":[function(require,module,exports){
 var invariant = require('react/lib/invariant');
 var merge = require('qs/lib/utils').merge;
 var qs = require('qs');
@@ -6657,6 +6730,11 @@ function Transition(path, retry) {
 assign(Transition.prototype, {
 
   abort: function (reason) {
+    if (this.isAborted) {
+      // First abort wins.
+      return;
+    }
+
     this.abortReason = reason;
     this.isAborted = true;
   },
@@ -6689,6 +6767,7 @@ var invariant = require('react/lib/invariant');
 var canUseDOM = require('react/lib/ExecutionEnvironment').canUseDOM;
 var ImitateBrowserBehavior = require('../behaviors/ImitateBrowserBehavior');
 var RouteHandler = require('../components/RouteHandler');
+var LocationActions = require('../actions/LocationActions');
 var HashLocation = require('../locations/HashLocation');
 var HistoryLocation = require('../locations/HistoryLocation');
 var RefreshLocation = require('../locations/RefreshLocation');
@@ -6700,6 +6779,7 @@ var supportsHistory = require('./supportsHistory');
 var Transition = require('./Transition');
 var PropTypes = require('./PropTypes');
 var Redirect = require('./Redirect');
+var Cancellation = require('./Cancellation');
 var Path = require('./Path');
 
 /**
@@ -6727,7 +6807,9 @@ function defaultAbortHandler(abortReason, location) {
   if (typeof location === 'string')
     throw new Error('Unhandled aborted transition! Reason: ' + abortReason);
 
-  if (abortReason instanceof Redirect) {
+  if (abortReason instanceof Cancellation) {
+    return;
+  } else if (abortReason instanceof Redirect) {
     location.replace(this.makePath(abortReason.to, abortReason.params, abortReason.query));
   } else {
     location.pop();
@@ -6825,6 +6907,7 @@ function createRouter(options) {
   var onAbort = options.onAbort || defaultAbortHandler;
   var state = {};
   var nextState = {};
+  var pendingTransition = null;
 
   function updateState() {
     state = nextState;
@@ -6896,7 +6979,14 @@ function createRouter(options) {
           'You cannot use transitionTo with a static location'
         );
 
-        location.push(this.makePath(to, params, query));
+        var path = this.makePath(to, params, query);
+
+        if (pendingTransition) {
+          // Replace so pending location does not stay in history.
+          location.replace(path);
+        } else {
+          location.push(path);
+        }
       },
 
       /**
@@ -6925,11 +7015,11 @@ function createRouter(options) {
       },
 
       /**
-       * Performs a match of the given path against this router and returns an object with
-       * the { path, routes, params, query } that match. Returns null if no match can be made.
+       * Performs a match of the given pathname against this router and returns an object
+       * with the { routes, params } that match. Returns null if no match can be made.
        */
-      match: function (path) {
-        return findMatch(Path.withoutQuery(path), routes, this.defaultRoute, this.notFoundRoute) || null;
+      match: function (pathname) {
+        return findMatch(pathname, routes, this.defaultRoute, this.notFoundRoute) || null;
       },
 
       /**
@@ -6949,10 +7039,22 @@ function createRouter(options) {
        * hooks wait, the transition is fully synchronous.
        */
       dispatch: function (path, action, callback) {
-        if (state.path === path)
+        if (pendingTransition) {
+          pendingTransition.abort(new Cancellation);
+          pendingTransition = null;
+        }
+
+        var prevPath = state.path;
+        if (prevPath === path)
           return; // Nothing to do!
 
-        var match = this.match(path);
+        // Record the scroll position as early as possible to
+        // get it before browsers try update it automatically.
+        if (prevPath && action !== LocationActions.REPLACE)
+          this.recordScrollPosition(prevPath);
+
+        var pathname = Path.withoutQuery(path);
+        var match = this.match(pathname);
 
         warning(
           match != null,
@@ -6985,6 +7087,7 @@ function createRouter(options) {
         }
 
         var transition = new Transition(path, this.replaceWith.bind(this, path));
+        pendingTransition = transition;
 
         transition.from(fromRoutes, components, function (error) {
           if (error || transition.isAborted)
@@ -6996,6 +7099,7 @@ function createRouter(options) {
 
             nextState.path = path;
             nextState.action = action;
+            nextState.pathname = pathname;
             nextState.routes = nextRoutes;
             nextState.params = nextParams;
             nextState.query = nextQuery;
@@ -7014,6 +7118,8 @@ function createRouter(options) {
        */
       run: function (callback) {
         function dispatchHandler(error, transition) {
+          pendingTransition = null;
+
           if (error) {
             onError.call(router, error);
           } else if (transition.isAborted) {
@@ -7114,7 +7220,7 @@ function createRouter(options) {
 module.exports = createRouter;
 
 }).call(this,require('_process'))
-},{"../behaviors/ImitateBrowserBehavior":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/behaviors/ImitateBrowserBehavior.js","../components/RouteHandler":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/RouteHandler.js","../locations/HashLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HashLocation.js","../locations/HistoryLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HistoryLocation.js","../locations/RefreshLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/RefreshLocation.js","../mixins/NavigationContext":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/NavigationContext.js","../mixins/Scrolling":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/Scrolling.js","../mixins/StateContext":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/StateContext.js","./Path":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Path.js","./PropTypes":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/PropTypes.js","./Redirect":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Redirect.js","./Transition":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Transition.js","./createRoutesFromChildren":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/createRoutesFromChildren.js","./supportsHistory":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/supportsHistory.js","_process":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/process/browser.js","react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js","react/lib/ExecutionEnvironment":"/Users/tmcw/src/coffeedex/node_modules/react/lib/ExecutionEnvironment.js","react/lib/invariant":"/Users/tmcw/src/coffeedex/node_modules/react/lib/invariant.js","react/lib/warning":"/Users/tmcw/src/coffeedex/node_modules/react/lib/warning.js"}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/createRoutesFromChildren.js":[function(require,module,exports){
+},{"../actions/LocationActions":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/actions/LocationActions.js","../behaviors/ImitateBrowserBehavior":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/behaviors/ImitateBrowserBehavior.js","../components/RouteHandler":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/components/RouteHandler.js","../locations/HashLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HashLocation.js","../locations/HistoryLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/HistoryLocation.js","../locations/RefreshLocation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/locations/RefreshLocation.js","../mixins/NavigationContext":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/NavigationContext.js","../mixins/Scrolling":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/Scrolling.js","../mixins/StateContext":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/mixins/StateContext.js","./Cancellation":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Cancellation.js","./Path":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Path.js","./PropTypes":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/PropTypes.js","./Redirect":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Redirect.js","./Transition":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/Transition.js","./createRoutesFromChildren":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/createRoutesFromChildren.js","./supportsHistory":"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/supportsHistory.js","_process":"/Users/tmcw/src/coffeedex/node_modules/browserify/node_modules/process/browser.js","react":"/Users/tmcw/src/coffeedex/node_modules/react/react.js","react/lib/ExecutionEnvironment":"/Users/tmcw/src/coffeedex/node_modules/react/lib/ExecutionEnvironment.js","react/lib/invariant":"/Users/tmcw/src/coffeedex/node_modules/react/lib/invariant.js","react/lib/warning":"/Users/tmcw/src/coffeedex/node_modules/react/lib/warning.js"}],"/Users/tmcw/src/coffeedex/node_modules/react-router/modules/utils/createRoutesFromChildren.js":[function(require,module,exports){
 var React = require('react');
 var warning = require('react/lib/warning');
 var invariant = require('react/lib/invariant');
@@ -7171,6 +7277,10 @@ function createRoute(element, parentRoute, namedRoutes) {
     checkPropTypes(componentName, type.propTypes, props);
 
   var route = { name: props.name };
+
+  if (props.ignoreScrollBehavior) {
+    route.ignoreScrollBehavior = true;
+  }
 
   if (type === Redirect.type) {
     route.handler = createRedirectHandler(props.to, props.params, props.query);
@@ -29151,7 +29261,7 @@ module.exports = {
      * @param {Function|String} callback The method to call when all publishers have emitted
      * @returns {Object} A subscription obj where `stop` is an unsub function and `listenable` is an array of listenables
      */
-    joinStrict: maker("strict"),
+    joinStrict: maker("strict")
 };
 
 },{"./joins":"/Users/tmcw/src/coffeedex/node_modules/reflux/src/joins.js","./utils":"/Users/tmcw/src/coffeedex/node_modules/reflux/src/utils.js"}],"/Users/tmcw/src/coffeedex/node_modules/reflux/src/ListenerMixin.js":[function(require,module,exports){
@@ -29279,19 +29389,7 @@ module.exports = function(listenable,key){
             }
         },
         componentDidMount: function(){
-            var warned = false;
-            for(var m in Reflux.ListenerMethods){
-                if (this[m] && typeof console && typeof console.warn === "function" && !warned ){
-                    console.warn(
-                        "Component using Reflux.connect already had property '"+m+"'. "+
-                        "Either you had your own property with that name which was now overridden, "+
-                        "or you combined connect with ListenerMixin which is unnecessary as connect "+
-                        "will include the ListenerMixin methods automatically."
-                    );
-                    warned = true;
-                }
-                this[m] = Reflux.ListenerMethods[m];
-            }
+            _.extend(this,Reflux.ListenerMethods);
             var me = this, cb = (key === undefined ? this.setState : function(v){me.setState(_.object([key],[v]));});
             this.listenTo(listenable,cb);
         },
