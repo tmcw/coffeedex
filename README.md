@@ -1,5 +1,7 @@
 # COFFEE DEX
 
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/tmcw/coffeedex?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 _A collaborative solution to the problem of_
 
 > How much does a cup of coffee for here cost, everywhere?
