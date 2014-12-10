@@ -305,7 +305,7 @@ var List = React.createClass({
     return (
     <div>
       <div className='clearfix col12'>
-        <div className='pad2 fill-darken0 clearfix'>
+        <div className='pad2 clearfix'>
           <div className='col4'>
             <img width={300/2} height={230/2}
               className='inline' src='assets/logo_inverted.png' />
