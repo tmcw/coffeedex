@@ -1,5 +1,7 @@
 # COFFEE DEX
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/tmcw/coffeedex.svg)](https://greenkeeper.io/)
+
 _A collaborative solution to the problem of_
 
 > How much does a cup of coffee for here cost, everywhere?
