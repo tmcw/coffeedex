@@ -20,7 +20,7 @@ window.React = React;
 
 // Constants for API endpoints
 const API06 = "https://api.openstreetmap.org/api/0.6/",
-  OVERPASS = "https://overpass-api.de/api/interpreter";
+  OVERPASS = "https://lz4.overpass-api.de/api/interpreter";
 
 // Constants for our OAuth connection to OpenStreetMap.
 const OAUTH_CONSUMER_KEY = "VTdXpqeoRiraqICAoLN3MkPghHR5nEG8cKfwPUdw",
